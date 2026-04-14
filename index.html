@@ -11,7 +11,6 @@
         body { font-family: 'Inter', 'Noto Sans KR', sans-serif; background-color: #f9fafb; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .table-fixed { table-layout: fixed; }
-        .break-all { word-break: break-all; }
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
         .transition-all { transition: all 0.2s ease; }
     </style>
@@ -140,7 +139,7 @@
         };
         const isSteel = (t) => t.includes('강') || t.includes('STB') || t.includes('SPG') || t.includes('트러스');
 
-        // --- 모든 시험 항목 규칙 (Full Version) ---
+        // --- 시험 항목 규칙 ---
         const TEST_RULES = {
             BRIDGE: [
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
@@ -153,7 +152,6 @@
                 }},
                 { id: 'ultrasonic', name: '초음파법(비파괴)', calculate: (s) => {
                     const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
-                    if (!isD) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
                     const totalL = s.bridgeSpans.reduce((acc, sp) => acc + sp.spanLength * sp.spanCount, 0);
                     const r = getAdjustmentRatio(totalL);
                     const qty = Math.ceil(calcByLength(totalL, 50) * r);
@@ -161,7 +159,6 @@
                 }},
                 { id: 'rebar_scan', name: '철근탐사', calculate: (s) => {
                     const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
-                    if (!isD) return { upperQty: '판단', lowerQty: '판단', upperCriteria: '선택과업' };
                     return { upperQty: 2, lowerQty: 4, upperCriteria: '2개소 이상', lowerCriteria: '4개소 이상' };
                 }},
                 { id: 'carbonation', name: '탄산화깊이 측정', calculate: (s) => {
@@ -239,7 +236,6 @@
             RETAINING_WALL: [
                 { id: 'survey_section', name: '측정분할', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '20m 간격' })},
                 { id: 'survey', name: '측량', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '선형/수준측량' })},
-                { id: 'ground_survey', name: '지반조사', calculate: () => ({ upperQty: 1, lowerQty: '-', upperCriteria: '1단면 이상' })},
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
                     if (s.retainingWallType === 'STONE') return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
                     const qty = Math.ceil(s.retainingWallTotalLength / s.evalUnit);
@@ -283,12 +279,47 @@
                 { id: 'crack_depth', name: '균열깊이 조사', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
                 { id: 'deformation_survey', name: '변형 및 변위조사', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
                 { id: 'core_sampling', name: '코어채취', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
+                { id: 'ground_survey', name: '지반조사', calculate: () => ({ upperQty: 1, lowerQty: '-', upperCriteria: '1단면 이상' })},
                 { id: 'groundwater', name: '지하수위측정', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
                 { id: 'inclinometer', name: '지중경사계측', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
                 { id: 'earth_pressure', name: '토압계측', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })},
                 { id: 'coating_thickness', name: '도막두께', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '선택과업' })}
             ]
         };
+
+        // --- 카테고리 판별 로직 ---
+        function getCategory(ruleId, s) {
+            const isDetailed = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+            
+            if (s.selectedType === 'BRIDGE') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    return ['rebound', 'carbonation'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    return ['rebound', 'rebar_scan', 'carbonation', 'chloride', 'coating_thickness'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (isDetailed) {
+                    return ['rebound', 'ultrasonic', 'rebar_scan', 'carbonation', 'chloride', 'crack_depth', 'steel_ut', 'coating_thickness'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            } else if (s.selectedType === 'TUNNEL') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    return ['survey_section', 'rebound', 'carbonation'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_1') {
+                    return ['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'rebar_corrosion', 'crack_depth', 'carbonation', 'chloride', 'luminance', 'illuminance'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    return ['survey_section', 'rebound', 'carbonation', 'chloride', 'luminance', 'illuminance'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'DETAILED_DIAGNOSIS') {
+                    return ['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'chloride', 'carbonation'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            } else if (s.selectedType === 'RETAINING_WALL') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    return ['chloride', 'rebar_scan', 'deformation_survey'].includes(ruleId) ? 'OPTIONAL' : 'BASIC';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_1') {
+                    return ruleId === 'ground_survey' ? 'BASIC' : 'BASIC'; // Simplified
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    return ['survey_section', 'survey', 'rebound', 'carbonation', 'chloride', 'filling_concrete'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            }
+            return 'BASIC';
+        }
 
         // --- UI 렌더링 엔진 ---
         function updateState(updates) {
@@ -297,7 +328,6 @@
         }
 
         function render() {
-            // 1. 시설물 종류 버튼
             const typeSelector = document.getElementById('type-selector');
             typeSelector.innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
                 <button onclick="updateState({selectedType: '${key}'})" class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}">
@@ -306,152 +336,54 @@
                 </button>
             `).join('');
 
-            // 2. 셀렉트 박스
-            const insSelect = document.getElementById('inspection-type');
-            insSelect.innerHTML = Object.entries(INSPECTION_INFO).map(([k, v]) => `<option value="${k}" ${state.inspectionType === k ? 'selected' : ''}>${v.name}</option>`).join('');
-            
-            const clsSelect = document.getElementById('facility-class');
-            clsSelect.innerHTML = Object.entries(FACILITY_CLASS_INFO).map(([k, v]) => `<option value="${k}" ${state.facilityClass === k ? 'selected' : ''}>${v}</option>`).join('');
+            document.getElementById('inspection-type').innerHTML = Object.entries(INSPECTION_INFO).map(([k, v]) => `<option value="${k}" ${state.inspectionType === k ? 'selected' : ''}>${v.name}</option>`).join('');
+            document.getElementById('facility-class').innerHTML = Object.entries(FACILITY_CLASS_INFO).map(([k, v]) => `<option value="${k}" ${state.facilityClass === k ? 'selected' : ''}>${v}</option>`).join('');
 
-            // 3. 동적 입력 필드
             const dynamicInputs = document.getElementById('dynamic-inputs');
             if (state.selectedType === 'BRIDGE') {
-                dynamicInputs.innerHTML = `
-                    <div class="space-y-3">
-                        ${state.bridgeSpans.map((span, i) => `
-                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[9px] font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded uppercase">Span #${i+1}</span>
-                                    <button onclick="removeSpan('${span.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                                </div>
-                                <select onchange="updateSpan('${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none">
-                                    ${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                                </select>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div class="relative">
-                                        <input type="number" value="${span.spanLength}" onchange="updateSpan('${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none">
-                                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span>
-                                    </div>
-                                    <div class="relative">
-                                        <input type="number" value="${span.spanCount}" onchange="updateSpan('${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none">
-                                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">경간</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                        <button onclick="addSpan()" class="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black border border-indigo-100 hover:bg-indigo-100 transition-all">+ 경간 추가</button>
-                    </div>
-                `;
+                dynamicInputs.innerHTML = `<div class="space-y-3">${state.bridgeSpans.map((span, i) => `
+                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
+                        <div class="flex items-center justify-between"><span class="text-[9px] font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded uppercase">Span #${i+1}</span><button onclick="removeSpan('${span.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
+                        <select onchange="updateSpan('${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none">${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+                        <div class="grid grid-cols-2 gap-2"><div class="relative"><input type="number" value="${span.spanLength}" onchange="updateSpan('${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span></div><div class="relative"><input type="number" value="${span.spanCount}" onchange="updateSpan('${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">경간</span></div></div>
+                    </div>`).join('')}<button onclick="addSpan()" class="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black border border-indigo-100 hover:bg-indigo-100 transition-all">+ 경간 추가</button></div>`;
             } else if (state.selectedType === 'RETAINING_WALL') {
-                dynamicInputs.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-3 gap-1">
-                            <button onclick="updateState({retainingWallType: 'CONCRETE'})" class="py-2 rounded-xl border text-[10px] font-black transition-all ${state.retainingWallType === 'CONCRETE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">콘크리트</button>
-                            <button onclick="updateState({retainingWallType: 'REINFORCED_SOIL'})" class="py-2 rounded-xl border text-[10px] font-black transition-all ${state.retainingWallType === 'REINFORCED_SOIL' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">보강토</button>
-                            <button onclick="updateState({retainingWallType: 'STONE'})" class="py-2 rounded-xl border text-[10px] font-black transition-all ${state.retainingWallType === 'STONE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">석축</button>
-                        </div>
-                        <div>
-                            <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">총 연장 (m)</label>
-                            <input type="number" value="${state.retainingWallTotalLength}" onchange="updateState({retainingWallTotalLength: parseFloat(this.value)||0})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">평가단위 (m)</label>
-                            <input type="number" value="${state.evalUnit}" onchange="updateState({evalUnit: parseFloat(this.value)||20})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-                        </div>
-                    </div>
-                `;
+                dynamicInputs.innerHTML = `<div class="space-y-4"><div class="grid grid-cols-3 gap-1">${['CONCRETE', 'REINFORCED_SOIL', 'STONE'].map(t => `<button onclick="updateState({retainingWallType: '${t}'})" class="py-2 rounded-xl border text-[10px] font-black transition-all ${state.retainingWallType === t ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">${t === 'CONCRETE' ? '콘크리트' : t === 'REINFORCED_SOIL' ? '보강토' : '석축'}</button>`).join('')}</div><div><label class="block text-[9px] font-black text-gray-500 uppercase mb-1">총 연장 (m)</label><input type="number" value="${state.retainingWallTotalLength}" onchange="updateState({retainingWallTotalLength: parseFloat(this.value)||0})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"></div><div><label class="block text-[9px] font-black text-gray-500 uppercase mb-1">평가단위 (m)</label><input type="number" value="${state.evalUnit}" onchange="updateState({evalUnit: parseFloat(this.value)||20})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"></div></div>`;
             } else {
-                dynamicInputs.innerHTML = `
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">터널 총 연장 (m)</label>
-                            <input type="number" value="${state.tunnelSections[0].length}" onchange="const s=[...state.tunnelSections];s[0].length=parseFloat(this.value)||0;updateState({tunnelSections: s})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-                        </div>
-                        <div class="flex gap-1">
-                            <button onclick="const s=[...state.tunnelSections];s[0].concreteType='REINFORCED';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">철근</button>
-                            <button onclick="const s=[...state.tunnelSections];s[0].concreteType='PLAIN';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">무근</button>
-                        </div>
-                    </div>
-                `;
+                dynamicInputs.innerHTML = `<div class="space-y-4"><div><label class="block text-[9px] font-black text-gray-500 uppercase mb-1">터널 총 연장 (m)</label><input type="number" value="${state.tunnelSections[0].length}" onchange="const s=[...state.tunnelSections];s[0].length=parseFloat(this.value)||0;updateState({tunnelSections: s})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"></div><div class="flex gap-1"><button onclick="const s=[...state.tunnelSections];s[0].concreteType='REINFORCED';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">철근</button><button onclick="const s=[...state.tunnelSections];s[0].concreteType='PLAIN';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">무근</button></div></div>`;
             }
 
-            // 4. 테이블 헤더
-            const subHeader = document.getElementById('table-sub-header');
-            if (state.selectedType === 'BRIDGE') {
-                subHeader.innerHTML = `
-                    <th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">상부구조</th>
-                    <th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">하부구조</th>
-                    <th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">상부 (기준/금회)</th>
-                    <th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">하부 (기준/금회)</th>
-                `;
-            } else {
-                subHeader.innerHTML = `
-                    <th colspan="2" class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">산정 기준</th>
-                    <th colspan="2" class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>
-                `;
-            }
+            const isBridge = state.selectedType === 'BRIDGE';
+            document.getElementById('table-sub-header').innerHTML = isBridge 
+                ? `<th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">상부구조</th><th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">하부구조</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">상부 (기준/금회)</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">하부 (기준/금회)</th>`
+                : `<th colspan="2" class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">산정 기준</th><th colspan="2" class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>`;
 
-            // 5. 결과 테이블 바디
-            const resultsBody = document.getElementById('results-body');
             const rules = TEST_RULES[state.selectedType];
-            resultsBody.innerHTML = rules.map(rule => {
-                const res = rule.calculate(state);
-                const isBridge = state.selectedType === 'BRIDGE';
-                
-                return `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="p-3 border-r border-gray-200 font-bold text-gray-900 text-[10px] text-center">${rule.name}</td>
-                        ${isBridge ? `
-                            <td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td>
-                            <td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.lowerCriteria || '-'}</td>
-                            <td class="p-2 border-r border-gray-200 text-center">
-                                <div class="flex flex-col items-center gap-1">
-                                    <span class="text-indigo-600 font-black text-[11px]">${res.upperQty}</span>
-                                    <input type="text" value="${state.implQtys[rule.id]?.upper || res.upperQty}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none">
-                                </div>
-                            </td>
-                            <td class="p-2 border-r border-gray-200 text-center">
-                                <div class="flex flex-col items-center gap-1">
-                                    <span class="text-indigo-600 font-black text-[11px]">${res.lowerQty}</span>
-                                    <input type="text" value="${state.implQtys[rule.id]?.lower || res.lowerQty}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none">
-                                </div>
-                            </td>
-                        ` : `
-                            <td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td>
-                            <td colspan="2" class="p-2 border-r border-gray-200 text-center">
-                                <div class="flex flex-col items-center gap-1">
-                                    <span class="text-indigo-600 font-black text-[11px]">${res.upperQty}</span>
-                                    <input type="text" value="${state.implQtys[rule.id]?.upper || res.upperQty}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none">
-                                </div>
-                            </td>
-                        `}
-                        <td class="p-2 text-[9px] text-gray-400 text-center italic">지침 기준 준수</td>
-                    </tr>
-                `;
-            }).join('');
+            const basicRules = rules.filter(r => getCategory(r.id, state) === 'BASIC');
+            const optionalRules = rules.filter(r => getCategory(r.id, state) === 'OPTIONAL');
 
-            // 아이콘 업데이트
+            const renderRows = (rulesList, title, icon) => {
+                if (rulesList.length === 0) return '';
+                const header = `<tr class="bg-gray-50/80"><td colspan="${isBridge ? 6 : 4}" class="p-2.5 px-4 text-[10px] font-black text-gray-500 flex items-center gap-2"><i data-lucide="${icon}" class="w-3 h-3"></i> ${title}</td></tr>`;
+                const rows = rulesList.map(rule => {
+                    const res = rule.calculate(state);
+                    return `<tr class="hover:bg-gray-50 transition-colors"><td class="p-3 border-r border-gray-200 font-bold text-gray-900 text-[10px] text-center">${rule.name}</td>
+                        ${isBridge ? `<td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.lowerCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-center"><div class="flex flex-col items-center gap-1"><span class="text-indigo-600 font-black text-[11px]">${res.upperQty}</span><input type="text" value="${state.implQtys[rule.id]?.upper || res.upperQty}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none"></div></td><td class="p-2 border-r border-gray-200 text-center"><div class="flex flex-col items-center gap-1"><span class="text-indigo-600 font-black text-[11px]">${res.lowerQty}</span><input type="text" value="${state.implQtys[rule.id]?.lower || res.lowerQty}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none"></div></td>`
+                        : `<td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td><td colspan="2" class="p-2 border-r border-gray-200 text-center"><div class="flex flex-col items-center gap-1"><span class="text-indigo-600 font-black text-[11px]">${res.upperQty}</span><input type="text" value="${state.implQtys[rule.id]?.upper || res.upperQty}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-indigo-50 border border-indigo-100 rounded text-center text-[10px] font-bold text-indigo-700 outline-none"></div></td>`}
+                        <td class="p-2 text-[9px] text-gray-400 text-center italic">지침 기준 준수</td></tr>`;
+                }).join('');
+                return header + rows;
+            };
+
+            document.getElementById('results-body').innerHTML = renderRows(basicRules, '기본과업 (BASIC)', 'check-circle') + renderRows(optionalRules, '선택과업 (OPTIONAL)', 'plus-circle');
             lucide.createIcons();
         }
 
-        // --- 헬퍼 함수 ---
-        function addSpan() {
-            const id = Math.random().toString(36).substr(2, 9);
-            updateState({ bridgeSpans: [...state.bridgeSpans, { id, type: 'STB (강박스)', spanLength: 30, spanCount: 1, girderCount: 5 }] });
-        }
-        function removeSpan(id) {
-            if (state.bridgeSpans.length > 1) updateState({ bridgeSpans: state.bridgeSpans.filter(s => s.id !== id) });
-        }
-        function updateSpan(id, field, value) {
-            const bridgeSpans = state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s);
-            updateState({ bridgeSpans });
-        }
-        function updateImplQty(ruleId, part, value) {
-            if (!state.implQtys[ruleId]) state.implQtys[ruleId] = {};
-            state.implQtys[ruleId][part] = value;
-        }
+        function addSpan() { updateState({ bridgeSpans: [...state.bridgeSpans, { id: Math.random().toString(36).substr(2, 9), type: 'STB (강박스)', spanLength: 30, spanCount: 1, girderCount: 5 }] }); }
+        function removeSpan(id) { if (state.bridgeSpans.length > 1) updateState({ bridgeSpans: state.bridgeSpans.filter(s => s.id !== id) }); }
+        function updateSpan(id, field, value) { updateState({ bridgeSpans: state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s) }); }
+        function updateImplQty(ruleId, part, value) { if (!state.implQtys[ruleId]) state.implQtys[ruleId] = {}; state.implQtys[ruleId][part] = value; }
 
-        // 초기 실행
         render();
     </script>
 </body>
