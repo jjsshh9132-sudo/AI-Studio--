@@ -1,0 +1,1347 @@
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Calculator, 
+  Info, 
+  ChevronRight, 
+  ChevronDown,
+  Folder,
+  Construction, 
+  Map as TunnelIcon, 
+  Waves, 
+  BrickWall as Wall, 
+  Square,
+  Download,
+  RefreshCcw,
+  AlertCircle,
+  Copy,
+  Check,
+  ClipboardCheck,
+  Settings2,
+  Layers,
+  Plus,
+  Trash2,
+  Hash,
+  ArrowRight,
+  Save,
+  Database,
+  Clock,
+  Layout,
+  Search
+} from 'lucide-react';
+import { cn } from '@/src/lib/utils';
+import { 
+  STRUCTURE_INFO, 
+  INSPECTION_INFO,
+  FACILITY_CLASS_INFO,
+  BRIDGE_TYPES,
+  TEST_RULES, 
+  type StructureType,
+  type InspectionType,
+  type FacilityClass,
+  type BridgeSpanInfo
+} from './constants';
+
+const ICON_MAP: Record<string, any> = {
+  Bridge: Construction,
+  Tunnel: TunnelIcon,
+  Waves: Waves,
+  Wall: Wall,
+  Square: Square,
+};
+
+export default function App() {
+  const [projectName, setProjectName] = useState<string>('');
+  const [facilityName, setFacilityName] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<StructureType>('BRIDGE');
+  const [selectedInspection, setSelectedInspection] = useState<InspectionType>('DETAILED_DIAGNOSIS');
+  const [selectedClass, setSelectedClass] = useState<FacilityClass>('CLASS_1');
+  
+  // Retaining Wall Concrete Type
+  const [wallConcreteType, setWallConcreteType] = useState<'CONCRETE' | 'REINFORCED_SOIL' | 'STONE'>('CONCRETE');
+  
+  // Saved Facilities State
+  const [savedFacilities, setSavedFacilities] = useState<any[]>([]);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  
+  // Bridge Spans State
+  const [bridgeSpans, setBridgeSpans] = useState<BridgeSpanInfo[]>([
+    { id: crypto.randomUUID(), type: BRIDGE_TYPES[0], spanLength: 30, spanCount: 3, girderCount: 5 }
+  ]);
+
+  // Tunnel Sections State
+  const [tunnelSections, setTunnelSections] = useState<any[]>([
+    { id: crypto.randomUUID(), type: '터널형식 1', length: 500, concreteType: 'REINFORCED' }
+  ]);
+
+  // General Input (for non-bridge/tunnel)
+  const [generalValue, setGeneralValue] = useState<string>('1000');
+  const [evalUnit, setEvalUnit] = useState<number>(20);
+  const [manualEvalCount, setManualEvalCount] = useState<number | null>(null);
+
+  // Implementation Quantities State
+  const [implQtys, setImplQtys] = useState<Record<string, { upper: any; lower: any }>>({});
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const bridgeTotalLength = useMemo(() => {
+    return bridgeSpans.reduce((acc, span) => acc + (span.spanLength * span.spanCount), 0);
+  }, [bridgeSpans]);
+
+  const tunnelTotalLength = useMemo(() => {
+    return tunnelSections.reduce((acc, section) => acc + section.length, 0);
+  }, [tunnelSections]);
+
+  const results = useMemo(() => {
+    let totalLength = 0;
+    if (selectedType === 'BRIDGE') totalLength = bridgeTotalLength;
+    else if (selectedType === 'TUNNEL') totalLength = tunnelTotalLength;
+    else totalLength = parseFloat(generalValue) || 0;
+
+    const totalArea = selectedType === 'BRIDGE' ? totalLength * 12 : parseFloat(generalValue) || 0;
+
+    const allRules = TEST_RULES[selectedType].map(rule => {
+      const calcResult = rule.calculate({
+        totalArea,
+        totalLength,
+        inspectionType: selectedInspection,
+        facilityClass: selectedClass,
+        bridgeSpans: selectedType === 'BRIDGE' ? bridgeSpans : undefined,
+        tunnelSections: selectedType === 'TUNNEL' ? tunnelSections : undefined,
+        wallConcreteType: selectedType === 'RETAINING_WALL' ? wallConcreteType : undefined,
+        evalUnit: selectedType === 'RETAINING_WALL' ? (manualEvalCount !== null ? (totalLength / manualEvalCount) : evalUnit) : undefined
+      });
+
+      // Dynamic Category logic for BRIDGE based on the provided tables
+      let dynamicCategory = rule.category;
+      if (selectedType === 'BRIDGE') {
+        const isDetailed = selectedInspection === 'DETAILED_DIAGNOSIS' || selectedInspection === 'PERFORMANCE_EVAL_1';
+        const isBasicInDetailed = ['rebound', 'ultrasonic', 'rebar_scan', 'carbonation', 'chloride', 'crack_depth', 'steel_ut', 'coating_thickness'].includes(rule.id);
+        
+        if (selectedInspection === 'DETAILED_INSPECTION') {
+          if (['rebound', 'carbonation'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else if (['core_sampling', 'rebar_scan', 'chloride', 'magnetic_particle', 'clearance_survey'].includes(rule.id)) dynamicCategory = 'OPTIONAL';
+          else dynamicCategory = 'OPTIONAL'; // Default to optional for others
+        } else if (selectedInspection === 'PERFORMANCE_EVAL_2') {
+          if (['rebound', 'rebar_scan', 'carbonation', 'chloride', 'coating_thickness'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else dynamicCategory = 'OPTIONAL';
+        } else if (isDetailed) {
+          if (isBasicInDetailed) dynamicCategory = 'BASIC';
+          else dynamicCategory = 'OPTIONAL';
+        }
+      } else if (selectedType === 'TUNNEL') {
+        if (selectedInspection === 'DETAILED_INSPECTION') {
+          if (['survey_section', 'rebound', 'carbonation'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else if (['chloride', 'core_sampling', 'rebar_scan', 'ultrasonic', 'cross_section'].includes(rule.id)) dynamicCategory = 'OPTIONAL';
+          else dynamicCategory = 'OPTIONAL';
+        } else if (selectedInspection === 'PERFORMANCE_EVAL_1') {
+          if (['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'rebar_corrosion', 'crack_depth', 'carbonation', 'chloride', 'luminance', 'illuminance'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else dynamicCategory = 'OPTIONAL';
+        } else if (selectedInspection === 'PERFORMANCE_EVAL_2') {
+          if (['survey_section', 'rebound', 'carbonation', 'chloride', 'luminance', 'illuminance'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else dynamicCategory = 'OPTIONAL';
+        } else if (selectedInspection === 'DETAILED_DIAGNOSIS') {
+          // For diagnosis, most are basic
+          if (['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'chloride', 'carbonation'].includes(rule.id)) dynamicCategory = 'BASIC';
+          else dynamicCategory = 'OPTIONAL';
+        }
+      } else if (selectedType === 'RETAINING_WALL') {
+        if (selectedInspection === 'DETAILED_INSPECTION') {
+          if (['chloride', 'rebar_scan', 'deformation_survey'].includes(rule.id)) {
+            dynamicCategory = 'OPTIONAL';
+          }
+        } else if (selectedInspection === 'PERFORMANCE_EVAL_1') {
+          if (['ground_survey'].includes(rule.id)) {
+            dynamicCategory = 'BASIC';
+          }
+        } else if (selectedInspection === 'PERFORMANCE_EVAL_2') {
+          if (['survey_section', 'survey', 'rebound', 'carbonation', 'chloride', 'filling_concrete'].includes(rule.id)) {
+            dynamicCategory = 'BASIC';
+          } else {
+            dynamicCategory = 'OPTIONAL';
+          }
+        }
+      }
+
+      return {
+        ...rule,
+        dynamicCategory,
+        calcResult
+      };
+    });
+
+    // Filter out rules that result in all '-' for both upper and lower unless they are explicitly basic
+    let filteredRules = allRules.filter(r => 
+      r.dynamicCategory === 'BASIC' || 
+      (r.calcResult.upperQty !== '-' || r.calcResult.lowerQty !== '-')
+    );
+
+    // Filter by wall type for Retaining Wall
+    if (selectedType === 'RETAINING_WALL') {
+      filteredRules = filteredRules.filter(r => {
+        if (wallConcreteType === 'STONE') {
+          // For stone walls, hide rebar and concrete specific tests
+          return !['rebar_scan', 'rebar_corrosion', 'carbonation', 'chloride', 'ultrasonic'].includes(r.id);
+        } else {
+          // For concrete/reinforced soil, hide stone specific tests
+          return !['rock_weathering', 'filling_concrete'].includes(r.id);
+        }
+      });
+    }
+
+    let basic = filteredRules.filter(r => r.dynamicCategory === 'BASIC');
+    let optional = filteredRules.filter(r => r.dynamicCategory === 'OPTIONAL');
+
+    const sortRules = (rules: any[], order: string[]) => {
+      return [...rules].sort((a, b) => {
+        const indexA = order.indexOf(a.id);
+        const indexB = order.indexOf(b.id);
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
+    };
+
+    if (selectedType === 'RETAINING_WALL') {
+      if (selectedInspection === 'PERFORMANCE_EVAL_1') {
+        const basicOrder = [
+          'survey_section', 'survey', 'ground_survey', 'rebound', 'ultrasonic', 
+          'rebar_corrosion', 'carbonation', 'chloride', 'filling_concrete', 
+          'rock_weathering', 'rebar_scan', 'crack_depth', 'deformation_survey'
+        ];
+        const optionalOrder = ['core_sampling', 'groundwater', 'inclinometer', 'earth_pressure', 'coating_thickness'];
+        basic = sortRules(basic, basicOrder);
+        optional = sortRules(optional, optionalOrder);
+      } else if (selectedInspection === 'PERFORMANCE_EVAL_2') {
+        const basicOrder = ['survey_section', 'survey', 'rebound', 'carbonation', 'chloride', 'filling_concrete'];
+        const optionalOrder = [
+          'core_sampling', 'rebar_scan', 'ground_survey', 'groundwater', 
+          'deformation_survey', 'inclinometer', 'earth_pressure', 'coating_thickness', 'rock_weathering'
+        ];
+        basic = sortRules(basic, basicOrder);
+        optional = sortRules(optional, optionalOrder);
+      }
+    } else if (selectedType === 'BRIDGE') {
+      const bridgeOrder = [
+        'rebound', 'ultrasonic', 'rebar_scan', 'carbonation', 'chloride', 
+        'crack_depth', 'steel_ut', 'coating_thickness', 'core_sampling', 
+        'underwater_survey', 'load_test', 'rebar_corrosion', 'magnetic_particle', 
+        'radiographic', 'clearance_survey'
+      ];
+      basic = sortRules(basic, bridgeOrder);
+      optional = sortRules(optional, bridgeOrder);
+    } else if (selectedType === 'TUNNEL') {
+      const tunnelOrder = [
+        'survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 
+        'chloride', 'carbonation', 'rebar_corrosion', 'crack_depth', 'core_sampling', 
+        'convergence', 'vibration_noise', 'strain_gauge', 'luminance', 'illuminance', 
+        'water_quality', 'boring', 'ground_survey'
+      ];
+      basic = sortRules(basic, tunnelOrder);
+      optional = sortRules(optional, tunnelOrder);
+    }
+
+    return { basic, optional };
+  }, [selectedType, selectedInspection, selectedClass, bridgeSpans, bridgeTotalLength, tunnelSections, tunnelTotalLength, generalValue, wallConcreteType]);
+
+  const addSpan = () => {
+    setBridgeSpans([...bridgeSpans, { 
+      id: crypto.randomUUID(), 
+      type: BRIDGE_TYPES[0], 
+      spanLength: 30, 
+      spanCount: 1, 
+      girderCount: 5 
+    }]);
+  };
+
+  const removeSpan = (id: string) => {
+    if (bridgeSpans.length > 1) {
+      setBridgeSpans(bridgeSpans.filter(s => s.id !== id));
+    }
+  };
+
+  const updateSpan = (id: string, field: keyof BridgeSpanInfo, value: any) => {
+    setBridgeSpans(bridgeSpans.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const addTunnelSection = () => {
+    setTunnelSections([...tunnelSections, { 
+      id: crypto.randomUUID(), 
+      type: `터널형식 ${tunnelSections.length + 1}`, 
+      length: 500, 
+      concreteType: 'REINFORCED' 
+    }]);
+  };
+
+  const removeTunnelSection = (id: string) => {
+    if (tunnelSections.length > 1) {
+      setTunnelSections(tunnelSections.filter(s => s.id !== id));
+    }
+  };
+
+  const updateTunnelSection = (id: string, field: string, value: any) => {
+    setTunnelSections(tunnelSections.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+  const handleExport = () => {
+    setIsExporting(true);
+    setTimeout(() => setIsExporting(false), 2000);
+  };
+
+  const handleSave = () => {
+    if (!projectName.trim()) {
+      alert('프로젝트명을 입력해주세요.');
+      return;
+    }
+    if (!facilityName.trim()) {
+      alert('시설물명을 입력해주세요.');
+      return;
+    }
+
+    const existingProject = savedFacilities.find(p => p.name === projectName);
+    const existingFacility = existingProject?.facilities?.[selectedType];
+
+    if (existingFacility) {
+      setShowSaveConfirm(true);
+    } else {
+      performSave();
+    }
+  };
+
+  const performSave = () => {
+    const facilityData = {
+      id: crypto.randomUUID(),
+      name: facilityName,
+      type: selectedType,
+      inspection: selectedInspection,
+      class: selectedClass,
+      updatedAt: new Date().toISOString(),
+      data: {
+        bridgeSpans,
+        tunnelSections,
+        wallConcreteType,
+        generalValue,
+        evalUnit,
+        manualEvalCount,
+        implQtys
+      }
+    };
+
+    const existingProjectIndex = savedFacilities.findIndex(p => p.name === projectName);
+    if (existingProjectIndex >= 0) {
+      const updated = [...savedFacilities];
+      updated[existingProjectIndex] = {
+        ...updated[existingProjectIndex],
+        updatedAt: new Date().toISOString(),
+        facilities: {
+          ...updated[existingProjectIndex].facilities,
+          [selectedType]: facilityData
+        }
+      };
+      setSavedFacilities(updated);
+    } else {
+      const newProject = {
+        id: crypto.randomUUID(),
+        name: projectName,
+        updatedAt: new Date().toISOString(),
+        facilities: {
+          [selectedType]: facilityData
+        }
+      };
+      setSavedFacilities([newProject, ...savedFacilities]);
+    }
+    setShowSaveConfirm(false);
+  };
+
+  const loadFacility = (project: any, type: StructureType) => {
+    const facility = project.facilities[type];
+    if (!facility) return;
+
+    setProjectName(project.name);
+    setFacilityName(facility.name);
+    setSelectedType(facility.type);
+    setSelectedInspection(facility.inspection);
+    setSelectedClass(facility.class);
+    setBridgeSpans(facility.data.bridgeSpans);
+    setTunnelSections(facility.data.tunnelSections);
+    setWallConcreteType(facility.data.wallConcreteType || 'CONCRETE');
+    setGeneralValue(facility.data.generalValue);
+    setEvalUnit(facility.data.evalUnit);
+    setManualEvalCount(facility.data.manualEvalCount);
+    setImplQtys(facility.data.implQtys);
+  };
+
+  const getTypeColor = (type: StructureType) => {
+    switch (type) {
+      case 'BRIDGE': return 'bg-blue-600';
+      case 'TUNNEL': return 'bg-emerald-600';
+      case 'RETAINING_WALL': return 'bg-orange-600';
+      default: return 'bg-gray-600';
+    }
+  };
+
+  const getTypeIcon = (type: StructureType) => {
+    switch (type) {
+      case 'BRIDGE': return Construction;
+      case 'TUNNEL': return TunnelIcon;
+      case 'RETAINING_WALL': return Wall;
+      default: return Layout;
+    }
+  };
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const renderQty = (qty: number | string | Record<string, number | string>, ruleId: string, part: 'upper' | 'lower', category: 'BASIC' | 'OPTIONAL') => {
+    const isJudgment = qty === '판단';
+    const defaultValue = category === 'OPTIONAL' ? '-' : qty;
+
+    if (typeof qty === 'object') {
+      const totalBase = Object.values(qty).reduce((a: number, b) => {
+        const val = typeof b === 'string' ? parseFloat(b) : (b as number);
+        return a + (isNaN(val) ? 0 : val);
+      }, 0);
+      
+      const defaultBreakdown = Object.keys(qty).reduce((acc, key) => ({ ...acc, [key]: '-' }), {});
+      const currentBreakdown = implQtys[ruleId]?.[part] || (category === 'OPTIONAL' ? defaultBreakdown : qty);
+      
+      const totalImpl = Object.values(currentBreakdown).reduce((a: number, b) => {
+        const val = typeof b === 'string' ? parseFloat(b) : (b as number);
+        return a + (isNaN(val) ? 0 : val);
+      }, 0);
+
+      return (
+        <div className="space-y-0.5">
+          {Object.entries(qty).map(([type, val]) => {
+            const currentVal = implQtys[ruleId]?.[part]?.[type] ?? (category === 'OPTIONAL' ? '-' : val);
+            const isItemJudgment = val === '판단' || currentVal === '판단';
+            
+            return (
+              <div key={type} className="flex flex-col gap-0.5 border-b border-gray-50 last:border-0 py-1">
+                <span className="text-[7px] text-gray-400 font-bold leading-tight">{type}</span>
+                <div className={cn("flex items-center gap-1", isItemJudgment ? "justify-center" : "justify-start")}>
+                  <span className="text-blue-700 font-bold">{val}</span>
+                  <span className="text-gray-300">/</span>
+                  <input 
+                    type="text"
+                    value={currentVal}
+                    onChange={(e) => {
+                      setImplQtys(prev => ({
+                        ...prev,
+                        [ruleId]: {
+                          ...prev[ruleId],
+                          [part]: {
+                            ...(prev[ruleId]?.[part] || (category === 'OPTIONAL' ? defaultBreakdown : qty)),
+                            [type]: e.target.value
+                          }
+                        }
+                      }));
+                    }}
+                    className={cn(
+                      "w-8 bg-purple-50 border border-purple-100 rounded font-bold text-purple-700 focus:outline-none focus:border-purple-400 text-[9px]",
+                      isItemJudgment ? "text-center" : "text-left px-1"
+                    )}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex items-center justify-between gap-1 pt-1 mt-1 border-t border-gray-200 bg-gray-50 px-1 rounded">
+            <span className="text-[8px] font-black text-gray-500 uppercase">Total</span>
+            <div className="flex items-center gap-1">
+              <span className="text-blue-800 font-black">{totalBase}</span>
+              <span className="text-gray-300">/</span>
+              <span className="text-purple-800 font-black">{totalImpl || (category === 'OPTIONAL' && totalImpl === 0 ? '-' : totalImpl)}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    const currentVal = implQtys[ruleId]?.[part] ?? defaultValue;
+    return (
+      <div className={cn("flex flex-col gap-1", isJudgment ? "items-center" : "items-start")}>
+        <span className="text-blue-700 font-bold">{qty}</span>
+        {qty !== '-' && (
+          <input 
+            type="text"
+            value={currentVal}
+            onChange={(e) => {
+              setImplQtys(prev => ({
+                ...prev,
+                [ruleId]: {
+                  ...prev[ruleId],
+                  [part]: e.target.value
+                }
+              }));
+            }}
+            className={cn(
+              "w-10 bg-purple-50 border border-purple-100 rounded font-bold text-purple-700 focus:outline-none focus:border-purple-400 py-0.5",
+              isJudgment ? "text-center" : "text-left px-1"
+            )}
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F9FAFB] flex">
+      {/* Sidebar for Saved Facilities */}
+      <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="bg-indigo-600 p-1 rounded">
+              <Folder className="w-3.5 h-3.5 text-white" />
+            </div>
+            <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-tight">프로젝트 리스트</h2>
+          </div>
+          <p className="text-[9px] text-gray-500 font-bold">시설물별 수량산출 프로젝트</p>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <section>
+            <div className="flex items-center gap-2 px-1 mb-2">
+              <Layers className="w-3 h-3 text-indigo-500" />
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">PROJECTS</span>
+            </div>
+            
+            <div className="space-y-2">
+              {savedFacilities.length === 0 ? (
+                <div className="py-10 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <p className="text-[10px] text-gray-400 font-bold">저장된 프로젝트가 없습니다.</p>
+                </div>
+              ) : (
+                savedFacilities.map((f) => (
+                  <div key={f.id} className="space-y-1">
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+                      <Folder className="w-3 h-3 text-indigo-600" />
+                      <span className="text-[11px] font-black text-gray-900 truncate">{f.name}</span>
+                    </div>
+                    
+                    <div className="pl-4 space-y-1 border-l-2 border-gray-100 ml-3.5 mt-1">
+                      {(Object.keys(f.facilities) as StructureType[]).map(type => {
+                        const facility = f.facilities[type];
+                        const Icon = getTypeIcon(type);
+                        const isActive = projectName === f.name && selectedType === type;
+                        
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => loadFacility(f, type)}
+                            className={cn(
+                              "w-full flex items-center justify-between p-2 rounded-lg transition-all group",
+                              isActive 
+                                ? "bg-white border border-indigo-100 shadow-sm" 
+                                : "hover:bg-gray-50"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "p-1 rounded-md transition-colors",
+                                isActive ? getTypeColor(type) : "bg-gray-100 group-hover:bg-gray-200"
+                              )}>
+                                <Icon className={cn("w-2.5 h-2.5", isActive ? "text-white" : "text-gray-400")} />
+                              </div>
+                              <div className="flex flex-col items-start">
+                                <span className={cn(
+                                  "text-[10px] font-black",
+                                  isActive ? "text-indigo-600" : "text-gray-700"
+                                )}>
+                                  {facility.name}
+                                </span>
+                                <span className="text-[8px] text-gray-400 font-bold">
+                                  {STRUCTURE_INFO[type].name}
+                                </span>
+                              </div>
+                            </div>
+                            {isActive && <div className="w-1 h-1 bg-indigo-600 rounded-full" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="px-2 pt-1">
+                      <div className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />
+                        {new Date(f.updatedAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 px-1 mb-2">
+              <Construction className="w-3 h-3 text-blue-500" />
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">FACILITIES</span>
+            </div>
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+              <p className="text-[9px] text-blue-600 font-bold leading-relaxed">
+                상단 프로젝트를 선택하면 해당 프로젝트의 모든 시설물(교량, 터널, 옹벽) 데이터를 통합 관리할 수 있습니다.
+              </p>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <header className="sticky top-0 z-50 bg-white border-b border-[#E5E7EB] px-6 py-4 shadow-sm">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-100">
+                <Calculator className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight text-[#111827]">
+                  시설물 재료시험 기준수량 계산기
+                </h1>
+                <p className="text-[10px] text-[#6B7280] font-bold uppercase tracking-[0.2em]">
+                  Safety & Maintenance Guidelines Compliance (Latest)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleSave}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-100"
+              >
+                <Save className="w-3.5 h-3.5" /> 저장하기
+              </button>
+              <button 
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-4 py-2 bg-[#111827] text-white rounded-xl text-xs font-black hover:bg-black transition-all active:scale-95 disabled:opacity-50 shadow-md"
+              >
+                {isExporting ? (
+                  <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                데이터 출력
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+          {/* 01. 기본 정보 설정 */}
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] p-4 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+              <div className="bg-blue-600 p-1 rounded-md">
+                <Layout className="w-3.5 h-3.5 text-white" />
+              </div>
+              <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-tight">
+                01. 기본 정보 설정
+              </h2>
+            </div>
+            
+            <div className="flex flex-wrap md:flex-nowrap gap-3 items-end">
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">프로젝트명</label>
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <select
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:bg-white focus:border-indigo-600 outline-none transition-all appearance-none"
+                    >
+                      <option value="">프로젝트 선택</option>
+                      {savedFacilities.map(p => (
+                        <option key={p.id} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const name = prompt('새 프로젝트명을 입력하세요:');
+                      if (name && name.trim()) {
+                        if (savedFacilities.some(p => p.name === name.trim())) {
+                          alert('이미 존재하는 프로젝트명입니다.');
+                          return;
+                        }
+                        const newProject = {
+                          id: crypto.randomUUID(),
+                          name: name.trim(),
+                          updatedAt: new Date().toISOString(),
+                          facilities: {}
+                        };
+                        setSavedFacilities([newProject, ...savedFacilities]);
+                        setProjectName(name.trim());
+                      }
+                    }}
+                    className="p-1.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-colors"
+                    title="새 프로젝트 추가"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">시설물명</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={facilityName}
+                    onChange={(e) => setFacilityName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-600 outline-none transition-all"
+                    placeholder="시설물명 입력"
+                  />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
+                </div>
+              </div>
+
+              <div className="w-32">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">시설물 종류</label>
+                <select 
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value as StructureType)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-600 outline-none transition-all appearance-none"
+                >
+                  {(Object.keys(STRUCTURE_INFO) as StructureType[]).map(type => (
+                    <option key={type} value={type}>{STRUCTURE_INFO[type].name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-28">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">시설물 종별</label>
+                <select 
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value as FacilityClass)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-600 outline-none transition-all appearance-none"
+                >
+                  {(Object.keys(FACILITY_CLASS_INFO) as FacilityClass[]).map(cls => (
+                    <option key={cls} value={cls}>{FACILITY_CLASS_INFO[cls]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-44">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">점검 종류</label>
+                <select 
+                  value={selectedInspection}
+                  onChange={(e) => setSelectedInspection(e.target.value as InspectionType)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-600 outline-none transition-all appearance-none"
+                >
+                  {(Object.keys(INSPECTION_INFO) as InspectionType[]).map((type) => (
+                    <option key={type} value={type}>{INSPECTION_INFO[type].name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
+
+        {/* 02. 형식별 제원 (교량 전용) 또는 수량 입력 */}
+        {selectedType === 'BRIDGE' ? (
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-600 p-1 rounded-md">
+                  <Settings2 className="w-3.5 h-3.5 text-white" />
+                </div>
+                <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-tight">
+                  02. 교량 형식별 제원
+                </h2>
+              </div>
+              <button 
+                onClick={addSpan}
+                className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded-md text-[10px] font-black hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+              >
+                <Plus className="w-3 h-3" /> 형식 추가
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              {bridgeSpans.map((span, index) => (
+                <div key={span.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <span className="text-[8px] font-black text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded uppercase shrink-0">
+                    #{index + 1}
+                  </span>
+                  
+                  <div className="flex-1 grid grid-cols-4 gap-2">
+                    <div>
+                      <select 
+                        value={span.type}
+                        onChange={(e) => updateSpan(span.id, 'type', e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded px-1.5 py-1 text-[10px] font-bold outline-none focus:border-blue-500"
+                      >
+                        {BRIDGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="number"
+                        value={span.spanLength}
+                        onChange={(e) => updateSpan(span.id, 'spanLength', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-white border border-gray-200 rounded pl-1.5 pr-4 py-1 text-[10px] font-bold outline-none focus:border-blue-500"
+                      />
+                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="number"
+                        value={span.spanCount}
+                        onChange={(e) => updateSpan(span.id, 'spanCount', parseInt(e.target.value) || 0)}
+                        className="w-full bg-white border border-gray-200 rounded pl-1.5 pr-4 py-1 text-[10px] font-bold outline-none focus:border-blue-500"
+                      />
+                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">경</span>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="number"
+                        value={span.girderCount}
+                        onChange={(e) => updateSpan(span.id, 'girderCount', parseInt(e.target.value) || 0)}
+                        className="w-full bg-white border border-gray-200 rounded pl-1.5 pr-4 py-1 text-[10px] font-bold outline-none focus:border-blue-500"
+                      />
+                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">거</span>
+                    </div>
+                  </div>
+
+                  <div className="w-16 text-right shrink-0">
+                    <span className="text-[10px] font-black text-blue-600">{span.spanLength * span.spanCount}m</span>
+                  </div>
+
+                  <button 
+                    onClick={() => removeSpan(span.id)}
+                    className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-[#111827] rounded-xl text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">교량 총 연장</span>
+              </div>
+              <div className="text-right">
+                <span className="text-lg font-black text-blue-400">{bridgeTotalLength}</span>
+                <span className="text-[10px] font-black ml-1 text-gray-400 uppercase">m</span>
+              </div>
+            </div>
+          </section>
+        ) : selectedType === 'TUNNEL' ? (
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-green-600 p-1 rounded-md">
+                  <Settings2 className="w-3.5 h-3.5 text-white" />
+                </div>
+                <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-tight">
+                  02. 터널 형식별 제원
+                </h2>
+              </div>
+              <button 
+                onClick={addTunnelSection}
+                className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md text-[10px] font-black hover:bg-green-700 transition-all shadow-sm active:scale-95"
+              >
+                <Plus className="w-3 h-3" /> 형식 추가
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              {tunnelSections.map((section, index) => (
+                <div key={section.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <span className="text-[8px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded uppercase shrink-0">
+                    #{index + 1}
+                  </span>
+                  
+                  <div className="flex-1 grid grid-cols-12 gap-2">
+                    <div className="col-span-4">
+                      <input 
+                        type="text"
+                        value={section.type}
+                        onChange={(e) => updateTunnelSection(section.id, 'type', e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded px-1.5 py-1 text-[10px] font-bold outline-none focus:border-green-500"
+                        placeholder="형식명"
+                      />
+                    </div>
+                    <div className="col-span-3 relative">
+                      <input 
+                        type="number"
+                        value={section.length}
+                        onChange={(e) => updateTunnelSection(section.id, 'length', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-white border border-gray-200 rounded pl-1.5 pr-4 py-1 text-[10px] font-bold outline-none focus:border-green-500"
+                      />
+                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span>
+                    </div>
+                    <div className="col-span-5 flex gap-1">
+                      <button 
+                        onClick={() => updateTunnelSection(section.id, 'concreteType', 'PLAIN')}
+                        className={cn(
+                          "flex-1 py-1 rounded text-[9px] font-black transition-all",
+                          section.concreteType === 'PLAIN' 
+                            ? "bg-green-600 text-white shadow-sm" 
+                            : "bg-white border border-gray-200 text-gray-400"
+                        )}
+                      >
+                        무근
+                      </button>
+                      <button 
+                        onClick={() => updateTunnelSection(section.id, 'concreteType', 'REINFORCED')}
+                        className={cn(
+                          "flex-1 py-1 rounded text-[9px] font-black transition-all",
+                          section.concreteType === 'REINFORCED' 
+                            ? "bg-green-600 text-white shadow-sm" 
+                            : "bg-white border border-gray-200 text-gray-400"
+                        )}
+                      >
+                        철근
+                      </button>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => removeTunnelSection(section.id)}
+                    className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-[#111827] rounded-xl text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">터널 총 연장</span>
+              </div>
+              <div className="text-right">
+                <span className="text-lg font-black text-green-400">{tunnelTotalLength}</span>
+                <span className="text-[10px] font-black ml-1 text-gray-400 uppercase">m</span>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {selectedType === 'RETAINING_WALL' && (
+          <section className="bg-white rounded-2xl border border-[#E5E7EB] p-4 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+              <div className="bg-orange-600 p-1 rounded-md">
+                <Settings2 className="w-3.5 h-3.5 text-white" />
+              </div>
+              <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-tight">
+                02. 옹벽 제원 및 평가단위 설정
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setWallConcreteType('CONCRETE')}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl border transition-all",
+                  wallConcreteType === 'CONCRETE'
+                    ? "bg-orange-50 border-orange-200 shadow-sm"
+                    : "bg-white border-gray-100 hover:border-orange-100"
+                )}
+              >
+                <div className={cn(
+                  "p-1.5 rounded-lg",
+                  wallConcreteType === 'CONCRETE' ? "bg-orange-600 text-white" : "bg-gray-50 text-gray-400"
+                )}>
+                  <Layout className="w-3.5 h-3.5" />
+                </div>
+                <span className={cn(
+                  "text-[10px] font-black",
+                  wallConcreteType === 'CONCRETE' ? "text-orange-700" : "text-gray-500"
+                )}>콘크리트 옹벽</span>
+              </button>
+
+              <button
+                onClick={() => setWallConcreteType('REINFORCED_SOIL')}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl border transition-all",
+                  wallConcreteType === 'REINFORCED_SOIL'
+                    ? "bg-orange-50 border-orange-200 shadow-sm"
+                    : "bg-white border-gray-100 hover:border-orange-100"
+                )}
+              >
+                <div className={cn(
+                  "p-1.5 rounded-lg",
+                  wallConcreteType === 'REINFORCED_SOIL' ? "bg-orange-600 text-white" : "bg-gray-50 text-gray-400"
+                )}>
+                  <Layers className="w-3.5 h-3.5" />
+                </div>
+                <span className={cn(
+                  "text-[10px] font-black",
+                  wallConcreteType === 'REINFORCED_SOIL' ? "text-orange-700" : "text-gray-500"
+                )}>보강토 옹벽</span>
+              </button>
+
+              <button
+                onClick={() => setWallConcreteType('STONE')}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl border transition-all",
+                  wallConcreteType === 'STONE'
+                    ? "bg-orange-50 border-orange-200 shadow-sm"
+                    : "bg-white border-gray-100 hover:border-orange-100"
+                )}
+              >
+                <div className={cn(
+                  "p-1.5 rounded-lg",
+                  wallConcreteType === 'STONE' ? "bg-orange-600 text-white" : "bg-gray-50 text-gray-400"
+                )}>
+                  <Square className="w-3.5 h-3.5" />
+                </div>
+                <span className={cn(
+                  "text-[10px] font-black",
+                  wallConcreteType === 'STONE' ? "text-orange-700" : "text-gray-500"
+                )}>석축</span>
+              </button>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">
+                  옹벽 총 연장 (m)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={generalValue}
+                    onChange={(e) => setGeneralValue(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold focus:bg-white focus:border-orange-600 outline-none transition-all"
+                    placeholder="0"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[10px]">m</span>
+                </div>
+              </div>
+              <div className="w-32">
+                <label className="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">
+                  평가단위 (m)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={evalUnit}
+                    onChange={(e) => setEvalUnit(parseFloat(e.target.value) || 20)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold focus:bg-white focus:border-orange-600 outline-none transition-all"
+                    placeholder="20"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[10px]">m</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-[#111827] rounded-xl text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-orange-400" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">산정된 평가단위 수</span>
+              </div>
+              <div className="text-right flex items-center gap-2">
+                <input 
+                  type="number"
+                  value={manualEvalCount !== null ? manualEvalCount : Math.ceil((parseFloat(generalValue) || 0) / evalUnit)}
+                  onChange={(e) => setManualEvalCount(parseInt(e.target.value) || 0)}
+                  className="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm font-black text-orange-400 focus:outline-none focus:border-orange-500 text-right"
+                />
+                <span className="text-[10px] font-black text-gray-400 uppercase">개소</span>
+                {manualEvalCount !== null && (
+                  <button 
+                    onClick={() => setManualEvalCount(null)}
+                    className="text-[8px] font-black text-gray-500 hover:text-white underline uppercase ml-1"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 03. 산출 결과 */}
+        <div className="space-y-6 pt-2">
+          <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-green-600 p-1.5 rounded-md">
+                <ClipboardCheck className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-[#111827] tracking-tight">03. 기준수량 산출 결과</h2>
+                <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                  {selectedType === 'BRIDGE' ? (facilityName || '미지정 시설물') : STRUCTURE_INFO[selectedType].name} — {INSPECTION_INFO[selectedInspection].name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <table className="w-full text-[10px] border-collapse table-fixed">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th rowSpan={2} className="p-1.5 border-r border-gray-200 font-black text-gray-700 w-[90px]">구 분</th>
+                  <th colSpan={2} className="p-1.5 border-r border-gray-200 font-black text-gray-700">세부지침 기준</th>
+                  <th colSpan={2} className="p-1.5 border-r border-gray-200 font-black text-gray-700 w-[160px]">수량 산출 (기준 / 금회)</th>
+                  <th rowSpan={2} className="p-1.5 font-black text-gray-700 w-[80px]">비 고</th>
+                </tr>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {selectedType === 'TUNNEL' || selectedType === 'RETAINING_WALL' ? (
+                    <th colSpan={4} className="p-1 border-r border-gray-200 font-bold text-blue-600">산정기준 및 수량산출 (기준/금회)</th>
+                  ) : (
+                    <>
+                      <th className="p-1 border-r border-gray-200 font-bold text-gray-500 w-[100px]">상부구조</th>
+                      <th className="p-1 border-r border-gray-200 font-bold text-gray-500 w-[100px]">하부구조</th>
+                      <th className="p-1 border-r border-gray-200 font-bold text-blue-600 w-[80px]">상부 (기준/금회)</th>
+                      <th className="p-1 border-r border-gray-200 font-bold text-blue-600 w-[80px]">하부 (기준/금회)</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {results.basic.length > 0 && (
+                  <tr className="bg-blue-50/30">
+                    <td colSpan={6} className="px-3 py-1 text-[9px] font-black text-blue-600 uppercase tracking-wider">기본과업 (Basic Tasks)</td>
+                  </tr>
+                )}
+                {results.basic.map((rule) => (
+                  <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-2 border-r border-gray-200 font-bold text-gray-900 text-center whitespace-pre-line break-all text-[9px]">
+                      {rule.name}
+                      {selectedType !== 'TUNNEL' && rule.calcResult.adjustmentRatio && rule.calcResult.adjustmentRatio < 1 && rule.calcResult.adjustmentRatio !== 1.0 && (
+                        <div className="text-[8px] text-red-500 font-black mt-1">
+                          조정비 {(rule.calcResult.adjustmentRatio * 100).toFixed(1)}% 적용
+                        </div>
+                      )}
+                    </td>
+                    <td 
+                      colSpan={selectedType === 'TUNNEL' || selectedType === 'RETAINING_WALL' ? 4 : 1}
+                      className={cn(
+                        "p-2 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]",
+                        rule.calcResult.upperCriteria === '시행 제외' && "text-red-500 font-bold bg-red-50/30"
+                      )}
+                    >
+                      {selectedType === 'TUNNEL' || selectedType === 'RETAINING_WALL' ? (
+                        <div className={cn("flex flex-col gap-1", rule.calcResult.upperQty === '판단' ? "items-center text-center" : "items-start text-left")}>
+                          <div className="text-gray-400 font-medium">기준: {rule.calcResult.upperCriteria || '-'}</div>
+                          <div className="text-blue-600 font-bold">
+                            {renderQty(rule.calcResult.upperQty, rule.id, 'upper', 'BASIC')}
+                          </div>
+                        </div>
+                      ) : (
+                        rule.calcResult.upperCriteria || '-'
+                      )}
+                    </td>
+                    {selectedType !== 'TUNNEL' && selectedType !== 'RETAINING_WALL' && (
+                      <>
+                        <td className={cn(
+                          "p-2 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]",
+                          rule.calcResult.lowerCriteria === '시행 제외' && "text-red-500 font-bold bg-red-50/30"
+                        )}>
+                          {rule.calcResult.lowerCriteria || '-'}
+                        </td>
+                        <td className="p-2 border-r border-gray-200 font-medium text-gray-700">
+                          {renderQty(rule.calcResult.upperQty, rule.id, 'upper', 'BASIC')}
+                        </td>
+                        <td className="p-2 border-r border-gray-200 font-medium text-gray-700">
+                          {renderQty(rule.calcResult.lowerQty, rule.id, 'lower', 'BASIC')}
+                        </td>
+                      </>
+                    )}
+                    <td className="p-2 text-gray-500 text-[9px] leading-tight">
+                      {rule.calcResult.remarks || '-'}
+                    </td>
+                  </tr>
+                ))}
+                {results.optional.length > 0 && (
+                  <tr className="bg-purple-50/30">
+                    <td colSpan={6} className="px-3 py-1 text-[9px] font-black text-purple-600 uppercase tracking-wider">선택과업 (Optional Tasks)</td>
+                  </tr>
+                )}
+                {results.optional.map((rule) => (
+                  <tr key={rule.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-2 border-r border-gray-200 font-bold text-gray-900 text-center whitespace-pre-line break-all text-[9px]">{rule.name}</td>
+                    <td 
+                      colSpan={selectedType === 'TUNNEL' || selectedType === 'RETAINING_WALL' ? 4 : 1}
+                      className={cn(
+                        "p-2 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]",
+                        rule.calcResult.upperCriteria === '시행 제외' && "text-red-500 font-bold bg-red-50/30"
+                      )}
+                    >
+                      {selectedType === 'TUNNEL' || selectedType === 'RETAINING_WALL' ? (
+                        <div className={cn("flex flex-col gap-1", rule.calcResult.upperQty === '판단' ? "items-center text-center" : "items-start text-left")}>
+                          <div className="text-gray-400 font-medium">기준: {rule.calcResult.upperCriteria || '-'}</div>
+                          <div className="text-blue-600 font-bold">
+                            {renderQty(rule.calcResult.upperQty, rule.id, 'upper', 'OPTIONAL')}
+                          </div>
+                        </div>
+                      ) : (
+                        rule.calcResult.upperCriteria || '-'
+                      )}
+                    </td>
+                    {selectedType !== 'TUNNEL' && selectedType !== 'RETAINING_WALL' && (
+                      <>
+                        <td className={cn(
+                          "p-2 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]",
+                          rule.calcResult.lowerCriteria === '시행 제외' && "text-red-500 font-bold bg-red-50/30"
+                        )}>
+                          {rule.calcResult.lowerCriteria || '-'}
+                        </td>
+                        <td className="p-2 border-r border-gray-200 font-medium text-gray-700">
+                          {renderQty(rule.calcResult.upperQty, rule.id, 'upper', 'OPTIONAL')}
+                        </td>
+                        <td className="p-2 border-r border-gray-200 font-medium text-gray-700">
+                          {renderQty(rule.calcResult.lowerQty, rule.id, 'lower', 'OPTIONAL')}
+                        </td>
+                      </>
+                    )}
+                    <td className="p-2 text-gray-500 text-[9px] leading-tight">
+                      {rule.calcResult.remarks || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footnotes */}
+          <div className="space-y-1 px-1">
+            <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 mb-2">
+              <p className="text-[10px] font-black text-gray-700 mb-1">
+                {selectedType === 'TUNNEL' 
+                  ? '※ 터널 재료시험 기준 (정밀안전진단 기준)' 
+                  : '※ 연장별 조정비 산정 기준 (연장 300m 이상 적용)'}
+              </p>
+              {selectedType === 'TUNNEL' ? (
+                <div className="text-[9px] text-gray-500 font-bold border-b border-gray-200 pb-2 mb-2 space-y-1">
+                  <p>• 반발경도시험, 초음파법 또는 콘크리트 코어시험 결과를 비교할 경우에는 시험부위가 동일하여야 함</p>
+                  <p>• 가능한 한 이전의 시험부위와 중복 피함 (철근탐사시험 등)</p>
+                  <p>• 터널은 상·하부 구조 구분이 없으므로 통합 수량으로 산출함</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px] text-gray-500 font-bold border-b border-gray-200 pb-2 mb-2">
+                  <p>• 300m 이상: 100%</p>
+                  <p>• 500m 이상: 80%</p>
+                  <p>• 1,000m 이상: 60%</p>
+                  <p>• 2,000m 이상: 40%</p>
+                  <p>• 4,000m 이상: 20~30%</p>
+                </div>
+              )}
+              <div className="bg-white p-2 rounded border border-blue-100">
+                <p className="text-[10px] font-black text-blue-800 mb-1">
+                  {selectedType === 'TUNNEL' ? '터널 산정 정보' : '현재 교량 산정식'}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {selectedType === 'TUNNEL' ? (
+                    <p className="text-[10px] font-bold text-blue-600">
+                      터널 연장: {tunnelTotalLength}m (조정비 미적용)
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-bold text-blue-600">
+                        총 연장(L) = {bridgeTotalLength}m 
+                        {bridgeTotalLength >= 300 ? (
+                          <>
+                            {bridgeTotalLength <= 500 && ` (300m ~ 500m 등분배) → 조정비 ${((1.0 - (0.2 * (bridgeTotalLength - 300) / 200)) * 100).toFixed(1)}% 적용`}
+                            {bridgeTotalLength > 500 && bridgeTotalLength <= 1000 && ` (500m ~ 1,000m 등분배) → 조정비 ${((0.8 - (0.2 * (bridgeTotalLength - 500) / 500)) * 100).toFixed(1)}% 적용`}
+                            {bridgeTotalLength > 1000 && bridgeTotalLength <= 2000 && ` (1,000m ~ 2,000m 등분배) → 조정비 ${((0.6 - (0.2 * (bridgeTotalLength - 1000) / 1000)) * 100).toFixed(1)}% 적용`}
+                            {bridgeTotalLength > 2000 && bridgeTotalLength <= 4000 && ` (2,000m ~ 4,000m 등분배) → 조정비 ${((0.4 - (0.15 * (bridgeTotalLength - 2000) / 2000)) * 100).toFixed(1)}% 적용`}
+                            {bridgeTotalLength > 4000 && " (L > 4,000m) → 조정비 25.0% 적용"}
+                          </>
+                        ) : " (L < 300m) → 조정비 적용 제외 (100%)"}
+                      </p>
+                      {bridgeTotalLength >= 300 && (
+                        <div className="w-full mt-1 pt-1 border-t border-blue-50 text-[9px] text-blue-600">
+                          <p>예시(반발경도): 기준수량(A) × 조정비(R) = 최종수량(Q)</p>
+                          <p className="font-mono">
+                            {(() => {
+                              const ratio = bridgeTotalLength <= 300 ? 1.0 :
+                                           bridgeTotalLength <= 500 ? (1.0 - (0.2 * (bridgeTotalLength - 300) / 200)) :
+                                           bridgeTotalLength <= 1000 ? (0.8 - (0.2 * (bridgeTotalLength - 500) / 500)) :
+                                           bridgeTotalLength <= 2000 ? (0.6 - (0.2 * (bridgeTotalLength - 1000) / 1000)) :
+                                           bridgeTotalLength <= 4000 ? (0.4 - (0.15 * (bridgeTotalLength - 2000) / 2000)) : 0.25;
+                              return `계산: 10개소(가정) × ${(ratio * 100).toFixed(1)}% = ${(10 * ratio).toFixed(1)}개소`;
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-gray-400 leading-tight">
+              주1) 철근콘크리트 상부구조에서의 최소 2개소 이상 실시
+            </p>
+            <p className="text-[9px] text-gray-400 leading-tight">
+              주2) 철근콘크리트 상부구조에서의 최소 3개소 이상 실시
+            </p>
+            <p className="text-[9px] text-gray-400 leading-tight">
+              주3) 염화물 함유량 시험시 시료(코어) 채취위치는 철근콘크리트 상부구조에서 최소 1개소 이상 실시하고, 염해에 취약한 해상교량과 하천교량 중 염해의 영향이 있을 것으로 판단되는 하천과 바다가 만나는 합류부 부근 교량의 경우에는 교량 하부 수중부(간만대 또는 비말대)를 대상으로 1곳 이상의 시료를 채취하여 염화물 침투 및 염해여부 확인
+            </p>
+          </div>
+
+          {/* Footer Info */}
+          <footer className="mt-8 pt-6 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[#6B7280]">
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-[#111827] uppercase tracking-wider">근거 법령 및 지침</h4>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 bg-blue-600 rounded-full shrink-0" />
+                    <p className="text-[10px] font-bold">시설물의 안전 및 유지관리에 관한 특별법 (2024.08 개정 - 최신)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 bg-blue-600 rounded-full shrink-0" />
+                    <p className="text-[10px] font-bold">시설물의 안전 및 유지관리 실시 세부지침 (2026.01 개정 - 최신)</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-[#111827] uppercase tracking-wider">엔지니어 유의사항</h4>
+                <p className="text-[10px] font-semibold leading-relaxed bg-gray-100 p-3 rounded-xl">
+                  교량 형식이 복합적인 경우 각 형식별로 기준수량을 산정하여 합산하는 것이 원칙입니다. 본 계산기는 입력된 모든 형식의 총 연장/면적을 합산하여 전체 기준수량을 제시합니다.
+                </p>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </main>
+    </div>
+      {/* Save Confirmation Modal */}
+      {showSaveConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4"
+          >
+            <div className="flex items-center gap-3 text-orange-600">
+              <AlertCircle className="w-6 h-6" />
+              <h3 className="text-lg font-black tracking-tight">중복 시설물 발견</h3>
+            </div>
+            <p className="text-sm text-gray-600 font-bold leading-relaxed">
+              이미 동일한 이름의 시설물이 존재합니다.<br/>
+              <span className="text-indigo-600">최신 데이터로 업데이트</span> 하시겠습니까?
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => setShowSaveConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-black text-gray-600 hover:bg-gray-50 transition-all"
+              >
+                취소
+              </button>
+              <button 
+                onClick={performSave}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+              >
+                업데이트 하기
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
