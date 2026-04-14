@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>시설물 안전진단 재료시험 산출기 (Single File)</title>
+    <title>시설물 안전진단 재료시험 산출기 (Vanilla JS)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -23,11 +26,14 @@
             -webkit-appearance: none;
             margin: 0;
         }
-        .transition-all {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
         .table-fixed {
             table-layout: fixed;
+        }
+        .break-all {
+            word-break: break-all;
+        }
+        .transition-all {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
@@ -37,8 +43,8 @@
         <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
             <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-blue-200">
-                        📊
+                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                        <i data-lucide="calculator" class="w-6 h-6"></i>
                     </div>
                     <div>
                         <h1 class="text-lg font-black text-gray-900 leading-none">시설물 안전진단 산출기</h1>
@@ -47,15 +53,15 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <button onclick="exportData()" class="flex items-center gap-2 px-4 py-2 bg-[#111827] text-white rounded-xl text-xs font-black hover:bg-black transition-all active:scale-95 shadow-md">
-                        💾 데이터 출력
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> 데이터 출력
                     </button>
-                    <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-md border border-blue-100">v3.0.0 FULL</span>
+                    <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-md border border-blue-100 uppercase">Vanilla JS v3.1</span>
                 </div>
             </div>
         </header>
 
         <main class="flex-1 flex overflow-hidden">
-            <!-- Sidebar (Inputs) -->
+            <!-- Sidebar -->
             <aside class="w-80 border-r border-gray-200 bg-white overflow-y-auto no-scrollbar flex flex-col shadow-sm">
                 <div class="p-5 space-y-8">
                     <!-- 01. 시설물 종류 -->
@@ -77,7 +83,7 @@
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">점검 종류</label>
-                            <select id="inspection-type" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                            <select id="inspection-type" onchange="handleInspectionTypeChange(this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
                                 <option value="DETAILED_INSPECTION">정밀안전점검</option>
                                 <option value="DETAILED_DIAGNOSIS" selected>정밀안전진단</option>
                                 <option value="PERFORMANCE_EVAL_1">1종 성능평가</option>
@@ -86,7 +92,7 @@
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">시설물 종별</label>
-                            <select id="facility-class" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                            <select id="facility-class" onchange="handleFacilityClassChange(this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
                                 <option value="CLASS_1">1종 시설물</option>
                                 <option value="CLASS_2">2종 시설물</option>
                                 <option value="CLASS_3">3종 시설물</option>
@@ -115,8 +121,8 @@
                     <div class="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm flex items-center justify-between relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -mr-32 -mt-32 opacity-50"></div>
                         <div class="flex items-center gap-6 relative z-10">
-                            <div id="summary-icon" class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-blue-100 text-white">
-                                🌉
+                            <div id="summary-icon-container" class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-100 text-white">
+                                <i id="summary-icon" data-lucide="bridge" class="w-8 h-8"></i>
                             </div>
                             <div>
                                 <h2 id="summary-title" class="text-2xl font-black text-gray-900 tracking-tight">교량 안전진단 산출표</h2>
@@ -137,7 +143,7 @@
                             <table class="w-full border-collapse text-left table-fixed">
                                 <thead>
                                     <tr class="bg-gray-50 border-b border-gray-200">
-                                        <th rowspan="2" class="p-4 border-r border-gray-200 font-black text-gray-700 text-[11px] w-[110px] text-center">구 분</th>
+                                        <th rowspan="2" class="p-4 border-r border-gray-200 font-black text-gray-700 text-[11px] w-[120px] text-center">구 분</th>
                                         <th colspan="2" class="p-4 border-r border-gray-200 font-black text-gray-700 text-[11px] text-center">세부지침 기준</th>
                                         <th colspan="2" class="p-4 border-r border-gray-200 font-black text-gray-700 text-[11px] text-center">수량 산출 (기준 / 금회)</th>
                                         <th rowspan="2" class="p-4 font-black text-gray-700 text-[11px] w-[140px] text-center">비 고</th>
@@ -166,11 +172,11 @@
     </div>
 
     <script>
-        // --- 1. Data & Constants ---
+        // --- 1. Constants & Data ---
         const STRUCTURE_INFO = {
-            BRIDGE: { name: '교량', icon: '🌉' },
-            TUNNEL: { name: '터널', icon: '🚇' },
-            RETAINING_WALL: { name: '옹벽', icon: '🧱' },
+            BRIDGE: { name: '교량', icon: 'bridge' },
+            TUNNEL: { name: '터널', icon: 'rail-symbol' },
+            RETAINING_WALL: { name: '옹벽', icon: 'layers' },
         };
 
         const BRIDGE_TYPES = [
@@ -178,31 +184,6 @@
             '트러스교', '아치교', '현수교', '사장교', '기타'
         ];
 
-        const INSPECTION_INFO = {
-            DETAILED_INSPECTION: { name: '정밀안전점검' },
-            DETAILED_DIAGNOSIS: { name: '정밀안전진단' },
-            PERFORMANCE_EVAL_1: { name: '1종 성능평가' },
-            PERFORMANCE_EVAL_2: { name: '2종 성능평가' },
-        };
-
-        // --- 2. State Management ---
-        let state = {
-            selectedType: 'BRIDGE',
-            inspectionType: 'DETAILED_DIAGNOSIS',
-            facilityClass: 'CLASS_1',
-            bridgeSpans: [
-                { id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }
-            ],
-            tunnelSections: [
-                { id: '1', type: '표준단면', length: 100, concreteType: 'REINFORCED' }
-            ],
-            retainingWallTotalArea: 1000,
-            wallConcreteType: 'CONCRETE',
-            evalUnit: 20,
-            implQtys: {} // { ruleId: { upper: { type: val }, lower: { type: val } } }
-        };
-
-        // --- 3. Calculation Logic (Ported from constants.ts) ---
         const calcByLength = (l, d) => Math.max(1, Math.ceil(l / d));
 
         const getAdjustmentRatio = (l) => {
@@ -217,13 +198,31 @@
         const isSteelStructure = (t) => 
             t.includes('강') || t.includes('STB') || t.includes('SPG') || t.includes('트러스') || t.includes('현수') || t.includes('사장');
 
+        // --- 2. State Management ---
+        let state = {
+            selectedType: 'BRIDGE',
+            inspectionType: 'DETAILED_DIAGNOSIS',
+            facilityClass: 'CLASS_1',
+            bridgeSpans: [
+                { id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }
+            ],
+            tunnelSections: [
+                { id: '1', type: '표준단면', length: 100, concreteType: 'REINFORCED' }
+            ],
+            retainingWallTotalLength: 100,
+            evalUnit: 20,
+            implQtys: {} // { ruleId: { upper: val, lower: val } }
+        };
+
+        // --- 3. Calculation Rules ---
         const TEST_RULES = {
             BRIDGE: [
                 {
                     id: 'rebound', name: '반발경도시험', unit: '개소', category: 'BASIC',
                     calculate: (p) => {
                         const isD = p.inspectionType === 'DETAILED_DIAGNOSIS' || p.inspectionType === 'PERFORMANCE_EVAL_1';
-                        const r = getAdjustmentRatio(p.totalLength);
+                        const totalLength = p.bridgeSpans.reduce((acc, s) => acc + s.spanLength * s.spanCount, 0);
+                        const r = getAdjustmentRatio(totalLength);
                         const uB = {}, lB = {};
                         const rcSpans = p.bridgeSpans.filter(s => !isSteelStructure(s.type));
                         const stSpans = p.bridgeSpans.filter(s => isSteelStructure(s.type));
@@ -242,18 +241,15 @@
                             const total = Math.ceil(calcByLength(stL, 50) * 1 * r);
                             stSpans.forEach((s, i) => {
                                 const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
-                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx].type)).reduce((a, b) => a + b, 0);
+                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx]?.type || '')).reduce((a, b) => a + b, 0);
                                 else uB[k] = Math.round(total * (s.spanLength * s.spanCount / stL));
                             });
-                            // Simple fix for steel sum
-                            const currentStSum = stSpans.reduce((acc, s) => acc + (uB[`${s.type} (${s.spanLength}m×${s.spanCount}경간)`] || 0), 0);
-                            if (stSpans.length > 0) uB[`${stSpans[stSpans.length-1].type} (${stSpans[stSpans.length-1].spanLength}m×${stSpans[stSpans.length-1].spanCount}경간)`] += (total - currentStSum);
                         }
-                        const totalL = Math.ceil(calcByLength(p.totalLength, 50) * r);
+                        const totalL = Math.ceil(calcByLength(totalLength, 50) * r);
                         p.bridgeSpans.forEach((s, i) => {
                             const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
                             if (i === p.bridgeSpans.length - 1) lB[k] = totalL - Object.values(lB).reduce((a, b) => a + b, 0);
-                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / p.totalLength));
+                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / totalLength));
                         });
                         return { upperQty: uB, lowerQty: lB, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m', remarks: '동일부위 시험', adjustmentRatio: r };
                     }
@@ -263,7 +259,8 @@
                     calculate: (p) => {
                         if (p.inspectionType === 'DETAILED_INSPECTION' && (p.facilityClass === 'CLASS_1' || p.facilityClass === 'CLASS_2')) return { upperQty: '-', lowerQty: '-', upperCriteria: '시행 제외', lowerCriteria: '시행 제외', remarks: '1,2종 정밀안전점검 제외' };
                         const isD = p.inspectionType === 'DETAILED_DIAGNOSIS' || p.inspectionType === 'PERFORMANCE_EVAL_1';
-                        const r = getAdjustmentRatio(p.totalLength);
+                        const totalLength = p.bridgeSpans.reduce((acc, s) => acc + s.spanLength * s.spanCount, 0);
+                        const r = getAdjustmentRatio(totalLength);
                         const uB = {}, lB = {};
                         const rcSpans = p.bridgeSpans.filter(s => !isSteelStructure(s.type));
                         const stSpans = p.bridgeSpans.filter(s => isSteelStructure(s.type));
@@ -281,17 +278,15 @@
                             const total = Math.ceil(calcByLength(stL, 50) * 1 * r);
                             stSpans.forEach((s, i) => {
                                 const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
-                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx].type)).reduce((a, b) => a + b, 0);
+                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx]?.type || '')).reduce((a, b) => a + b, 0);
                                 else uB[k] = Math.round(total * (s.spanLength * s.spanCount / stL));
                             });
-                            const currentStSum = stSpans.reduce((acc, s) => acc + (uB[`${s.type} (${s.spanLength}m×${s.spanCount}경간)`] || 0), 0);
-                            if (stSpans.length > 0) uB[`${stSpans[stSpans.length-1].type} (${stSpans[stSpans.length-1].spanLength}m×${stSpans[stSpans.length-1].spanCount}경간)`] += (total - currentStSum);
                         }
-                        const totalL = Math.ceil(calcByLength(p.totalLength, 50) * r);
+                        const totalL = Math.ceil(calcByLength(totalLength, 50) * r);
                         p.bridgeSpans.forEach((s, i) => {
                             const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
                             if (i === p.bridgeSpans.length - 1) lB[k] = totalL - Object.values(lB).reduce((a, b) => a + b, 0);
-                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / p.totalLength));
+                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / totalLength));
                         });
                         return { upperQty: uB, lowerQty: lB, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m', remarks: '동일부위 시험', adjustmentRatio: r };
                     }
@@ -301,7 +296,8 @@
                     calculate: (p) => {
                         if (p.inspectionType === 'DETAILED_INSPECTION') return { upperQty: '판단', lowerQty: '판단', upperCriteria: '과업 내용에 의해 조사 및 수량 결정', lowerCriteria: '과업 내용에 의해 조사 및 수량 결정', remarks: '선택과업' };
                         const isD = p.inspectionType === 'DETAILED_DIAGNOSIS' || p.inspectionType === 'PERFORMANCE_EVAL_1';
-                        const r = getAdjustmentRatio(p.totalLength);
+                        const totalLength = p.bridgeSpans.reduce((acc, s) => acc + s.spanLength * s.spanCount, 0);
+                        const r = getAdjustmentRatio(totalLength);
                         const uB = {}, lB = {};
                         const rcSpans = p.bridgeSpans.filter(s => !isSteelStructure(s.type));
                         const stSpans = p.bridgeSpans.filter(s => isSteelStructure(s.type));
@@ -319,17 +315,15 @@
                             const total = Math.ceil(calcByLength(stL, 50) * 1 * r);
                             stSpans.forEach((s, i) => {
                                 const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
-                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx].type)).reduce((a, b) => a + b, 0);
+                                if (i === stSpans.length - 1) uB[k] = total - Object.values(uB).filter((v, idx) => isSteelStructure(stSpans[idx]?.type || '')).reduce((a, b) => a + b, 0);
                                 else uB[k] = Math.round(total * (s.spanLength * s.spanCount / stL));
                             });
-                            const currentStSum = stSpans.reduce((acc, s) => acc + (uB[`${s.type} (${s.spanLength}m×${s.spanCount}경간)`] || 0), 0);
-                            if (stSpans.length > 0) uB[`${stSpans[stSpans.length-1].type} (${stSpans[stSpans.length-1].spanLength}m×${stSpans[stSpans.length-1].spanCount}경간)`] += (total - currentStSum);
                         }
-                        const totalL = Math.ceil(calcByLength(p.totalLength, 50) * r);
+                        const totalL = Math.ceil(calcByLength(totalLength, 50) * r);
                         p.bridgeSpans.forEach((s, i) => {
                             const k = `${s.type} (${s.spanLength}m×${s.spanCount}경간)`;
                             if (i === p.bridgeSpans.length - 1) lB[k] = totalL - Object.values(lB).reduce((a, b) => a + b, 0);
-                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / p.totalLength));
+                            else lB[k] = Math.round(totalL * (s.spanLength * s.spanCount / totalLength));
                         });
                         return { upperQty: uB, lowerQty: lB, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m', remarks: '탄산화 측정 위치 수행', adjustmentRatio: r };
                     }
@@ -410,7 +404,8 @@
                     id: 'cross_section', name: '단면측량', unit: '개소', category: 'BASIC',
                     calculate: (p) => {
                         if (!p.inspectionType.includes('DIAGNOSIS') && !p.inspectionType.includes('EVAL_1')) return { upperQty: '-', lowerQty: '-', upperCriteria: '-', lowerCriteria: '-' };
-                        const qty = Math.ceil(p.totalLength / 200) + 1;
+                        const totalLength = p.tunnelSections.reduce((acc, s) => acc + s.length, 0);
+                        const qty = Math.ceil(totalLength / 200) + 1;
                         return { upperQty: qty, lowerQty: '-', upperCriteria: '(총연장÷200m)+1개소', remarks: '책임기술자 조정 가능' };
                     }
                 },
@@ -418,92 +413,113 @@
                     id: 'rebound', name: '반발경도시험', unit: '개소', category: 'BASIC',
                     calculate: (p) => {
                         const isD = p.inspectionType.includes('DIAGNOSIS') || p.inspectionType.includes('EVAL_1');
+                        const totalLength = p.tunnelSections.reduce((acc, s) => acc + s.length, 0);
                         const divisor = isD ? 100 : 300;
-                        const qty = Math.ceil(p.totalLength / divisor) * (isD ? 2 : 1);
+                        const qty = Math.ceil(totalLength / divisor) * (isD ? 2 : 1);
                         return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? '(총연장÷100m)×2개소' : '(총연장÷300m)개소' };
                     }
+                },
+                {
+                    id: 'ultrasonic', name: '초음파전달속도시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const isD = p.inspectionType.includes('DIAGNOSIS') || p.inspectionType.includes('EVAL_1');
+                        const totalLength = p.tunnelSections.reduce((acc, s) => acc + s.length, 0);
+                        const divisor = isD ? 100 : 300;
+                        const qty = Math.ceil(totalLength / divisor) * (isD ? 2 : 1);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? '(총연장÷100m)×2개소' : '(총연장÷300m)개소' };
+                    }
+                },
+                {
+                    id: 'rebar_scan', name: '철근탐사시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const reinforcedLength = p.tunnelSections.filter(s => s.concreteType === 'REINFORCED').reduce((acc, s) => acc + s.length, 0);
+                        if (reinforcedLength === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '철근콘크리트 구간 없음', lowerCriteria: '-' };
+                        const isD = p.inspectionType === 'DETAILED_DIAGNOSIS';
+                        const qty = reinforcedLength < 1000 ? 4 : 4 + Math.ceil((reinforcedLength - 1000) / 500);
+                        return { upperQty: isD ? qty : '판단', lowerQty: '-', upperCriteria: isD ? '1,000m 미만: 4개소\n1,000m 이상: 4+1개소/500m' : '책임기술자 판단' };
+                    }
+                },
+                {
+                    id: 'chloride', name: '염화물 함유량시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const reinforcedLength = p.tunnelSections.filter(s => s.concreteType === 'REINFORCED').reduce((acc, s) => acc + s.length, 0);
+                        if (reinforcedLength === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '철근콘크리트 구간 없음', lowerCriteria: '-' };
+                        return { upperQty: '판단', lowerQty: '-', upperCriteria: '책임기술자 판단', remarks: '철근탐사시험 기준 준용' };
+                    }
+                },
+                {
+                    id: 'carbonation', name: '탄산화 깊이 측정', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const reinforcedLength = p.tunnelSections.filter(s => s.concreteType === 'REINFORCED').reduce((acc, s) => acc + s.length, 0);
+                        if (reinforcedLength === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '철근콘크리트 구간 없음', lowerCriteria: '-' };
+                        const qty = reinforcedLength < 1000 ? 4 : 4 + Math.ceil((reinforcedLength - 1000) / 500);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '1,000m 미만: 4개소\n1,000m 이상: 4+1개소/500m' };
+                    }
+                },
+                {
+                    id: 'crack_depth', name: '균열깊이 조사', unit: '개소', category: 'BASIC',
+                    calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '책임기술자 판단' })
                 }
             ],
             RETAINING_WALL: [
                 {
+                    id: 'survey_section', name: '측정분할', unit: '간격', category: 'BASIC',
+                    calculate: () => ({ upperQty: '20m', lowerQty: '-', upperCriteria: '20m 간격, 신축이음부', remarks: '책임기술자 조정 가능' })
+                },
+                {
                     id: 'rebound', name: '반발경도시험', unit: '개소', category: 'BASIC',
                     calculate: (p) => {
-                        const isD = p.inspectionType.includes('DIAGNOSIS') || p.inspectionType.includes('EVAL_1');
-                        const qty = Math.ceil(p.totalArea / 500) * (isD ? 2 : 1);
-                        return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? '2개소/500㎡' : '1개소/500㎡' };
+                        const isD = p.inspectionType === 'DETAILED_DIAGNOSIS' || p.inspectionType === 'PERFORMANCE_EVAL_1';
+                        const qty = Math.ceil(p.retainingWallTotalLength / 50) * (isD ? 2 : 1);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? '2개소/50m' : '1개소/50m' };
+                    }
+                },
+                {
+                    id: 'ultrasonic', name: '초음파전달속도시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        if (p.inspectionType === 'DETAILED_INSPECTION') return { upperQty: '-', lowerQty: '-', upperCriteria: '정밀점검 제외', lowerCriteria: '-' };
+                        const qty = Math.ceil(p.retainingWallTotalLength / 20);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '평가단위(20m)당 1개소 이상' };
+                    }
+                },
+                {
+                    id: 'rebar_corrosion', name: '철근부식도시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        if (p.inspectionType === 'DETAILED_INSPECTION') return { upperQty: '-', lowerQty: '-', upperCriteria: '정밀점검 제외', lowerCriteria: '-' };
+                        const qty = p.retainingWallTotalLength < 100 ? 2 : 2 + Math.ceil((p.retainingWallTotalLength - 100) / 50);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '100m 미만: 2개소\n100m 이상: 2+1개소/50m' };
+                    }
+                },
+                {
+                    id: 'carbonation', name: '탄산화 깊이 측정', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const qty = p.retainingWallTotalLength < 100 ? 2 : 2 + Math.ceil((p.retainingWallTotalLength - 100) / 50);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '100m 미만: 2개소\n100m 이상: 2+1개소/50m' };
+                    }
+                },
+                {
+                    id: 'chloride', name: '염화물 함유량 시험', unit: '개소', category: 'BASIC',
+                    calculate: (p) => {
+                        const qty = p.retainingWallTotalLength < 100 ? 2 : 2 + Math.ceil((p.retainingWallTotalLength - 100) / 50);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '100m 미만: 2개소\n100m 이상: 2+1개소/50m' };
                     }
                 }
             ]
         };
 
-        // --- 4. UI Rendering & Logic ---
+
+        // --- 4. UI Logic ---
         function updateState(updates) {
             state = { ...state, ...updates };
             render();
         }
 
-        function renderTypeSelector() {
-            const container = document.getElementById('type-selector');
-            container.innerHTML = '';
-            Object.entries(STRUCTURE_INFO).forEach(([key, info]) => {
-                const btn = document.createElement('button');
-                btn.className = `flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-lg shadow-blue-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}`;
-                btn.innerHTML = `<span class="text-2xl mb-1">${info.icon}</span><span class="text-[10px] font-black">${info.name}</span>`;
-                btn.onclick = () => updateState({ selectedType: key });
-                container.appendChild(btn);
-            });
+        function handleInspectionTypeChange(val) {
+            updateState({ inspectionType: val });
         }
 
-        function renderDynamicInputs() {
-            const container = document.getElementById('dynamic-inputs');
-            container.innerHTML = '';
-
-            if (state.selectedType === 'BRIDGE') {
-                const header = document.createElement('div');
-                header.className = 'flex items-center justify-between mb-4';
-                header.innerHTML = `<label class="text-[10px] font-black text-gray-500 uppercase tracking-widest">경간 구성 정보</label>
-                    <button onclick="addBridgeSpan()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-black shadow-md hover:bg-blue-700 transition-all">➕ 추가</button>`;
-                container.appendChild(header);
-
-                state.bridgeSpans.forEach((span, idx) => {
-                    const card = document.createElement('div');
-                    card.className = 'p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-4 relative group hover:border-blue-200 transition-all';
-                    card.innerHTML = `
-                        <button onclick="removeBridgeSpan('${span.id}')" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all shadow-lg">🗑️</button>
-                        <div>
-                            <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">형식</label>
-                            <select onchange="updateBridgeSpan('${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                                ${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div>
-                                <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">연장(m)</label>
-                                <input type="number" value="${span.spanLength}" onchange="updateBridgeSpan('${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">경간수</label>
-                                <input type="number" value="${span.spanCount}" onchange="updateBridgeSpan('${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">거더수</label>
-                                <input type="number" value="${span.girderCount}" onchange="updateBridgeSpan('${span.id}', 'girderCount', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } else if (state.selectedType === 'TUNNEL') {
-                container.innerHTML = `<div>
-                    <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">터널 총 연장 (m)</label>
-                    <input type="number" value="${state.tunnelTotalLength}" onchange="updateState({ tunnelTotalLength: Number(this.value) })" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
-                </div>`;
-            } else if (state.selectedType === 'RETAINING_WALL') {
-                container.innerHTML = `<div>
-                    <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">옹벽 총 면적 (㎡)</label>
-                    <input type="number" value="${state.retainingWallTotalArea}" onchange="updateState({ retainingWallTotalArea: Number(this.value) })" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
-                </div>`;
-            }
+        function handleFacilityClassChange(val) {
+            updateState({ facilityClass: val });
         }
 
         function addBridgeSpan() {
@@ -517,50 +533,8 @@
         }
 
         function updateBridgeSpan(id, field, value) {
-            const newSpans = state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : Number(value) } : s);
+            const newSpans = state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s);
             updateState({ bridgeSpans: newSpans });
-        }
-
-        function renderQty(qty, ruleId, part, category) {
-            const isJudgment = qty === '판단';
-            const isNone = qty === '-';
-            if (isNone) return '<span class="text-gray-300 font-bold">-</span>';
-
-            let baseDisplay = '';
-            let totalBase = 0;
-
-            if (typeof qty === 'object') {
-                totalBase = Object.values(qty).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
-                baseDisplay = Object.entries(qty).map(([type, val]) => `
-                    <div class="flex items-center justify-between gap-2 py-1 border-b border-gray-50 last:border-0">
-                        <span class="text-[7px] text-gray-400 font-bold truncate max-w-[100px]">${type}</span>
-                        <span class="text-[9px] text-blue-600 font-black">${val}</span>
-                    </div>
-                `).join('') + `
-                    <div class="mt-1 pt-1 border-t border-blue-100 flex justify-between items-center">
-                        <span class="text-[8px] text-blue-400 font-black uppercase">Total</span>
-                        <span class="text-[10px] text-blue-800 font-black">${totalBase}</span>
-                    </div>
-                `;
-            } else {
-                totalBase = typeof qty === 'number' ? qty : 0;
-                baseDisplay = `<span class="text-blue-700 font-black text-[11px]">${qty}</span>`;
-            }
-
-            const currentVal = state.implQtys[ruleId]?.[part] ?? (category === 'OPTIONAL' ? '-' : (typeof qty === 'object' ? totalBase : qty));
-
-            return `
-                <div class="flex flex-col gap-1.5 ${isJudgment ? 'items-center' : 'items-start'}">
-                    <div class="w-full">${baseDisplay}</div>
-                    <div class="flex items-center gap-1 w-full bg-purple-50 p-1 rounded-lg border border-purple-100">
-                        <span class="text-[8px] text-purple-400 font-black">실시:</span>
-                        <input type="text" value="${currentVal}" 
-                            onchange="updateImplQty('${ruleId}', '${part}', this.value)"
-                            class="w-full bg-transparent text-purple-700 text-[10px] font-black outline-none text-center"
-                        >
-                    </div>
-                </div>
-            `;
         }
 
         function updateImplQty(ruleId, part, value) {
@@ -568,19 +542,98 @@
             state.implQtys[ruleId][part] = value;
         }
 
-        function renderTable() {
+        function exportData() {
+            const data = JSON.stringify(state, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `safety_inspection_data_${Date.now()}.json`;
+            a.click();
+        }
+
+        function render() {
+            // 1. Render Type Selector
+            const typeSelector = document.getElementById('type-selector');
+            typeSelector.innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
+                <button onclick="updateState({ selectedType: '${key}' })" class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-lg shadow-blue-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}">
+                    <i data-lucide="${info.icon}" class="w-6 h-6 mb-1"></i>
+                    <span class="text-[10px] font-black">${info.name}</span>
+                </button>
+            `).join('');
+
+            // 2. Render Dynamic Inputs
+            const dynamicInputs = document.getElementById('dynamic-inputs');
+            if (state.selectedType === 'BRIDGE') {
+                dynamicInputs.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest">경간 구성 정보</label>
+                        <button onclick="addBridgeSpan()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-black shadow-md hover:bg-blue-700 transition-all">➕ 추가</button>
+                    </div>
+                    ${state.bridgeSpans.map(span => `
+                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-4 relative group hover:border-blue-200 transition-all">
+                            <button onclick="removeBridgeSpan('${span.id}')" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all shadow-lg">🗑️</button>
+                            <div>
+                                <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">형식</label>
+                                <select onchange="updateBridgeSpan('${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                    ${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">연장(m)</label>
+                                    <input type="number" value="${span.spanLength}" onchange="updateBridgeSpan('${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">경간수</label>
+                                    <input type="number" value="${span.spanCount}" onchange="updateBridgeSpan('${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[8px] font-black text-gray-400 uppercase mb-1 ml-0.5">거더수</label>
+                                    <input type="number" value="${span.girderCount}" onchange="updateBridgeSpan('${span.id}', 'girderCount', this.value)" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+            } else if (state.selectedType === 'TUNNEL') {
+                dynamicInputs.innerHTML = `
+                    <div>
+                        <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">터널 총 연장 (m)</label>
+                        <input type="number" value="${state.tunnelSections[0].length}" onchange="const s=[...state.tunnelSections];s[0].length=parseFloat(this.value)||0;updateState({tunnelSections:s})" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                    </div>
+                `;
+            } else if (state.selectedType === 'RETAINING_WALL') {
+                dynamicInputs.innerHTML = `
+                    <div>
+                        <label class="block text-[9px] font-black text-[#6B7280] uppercase mb-1 ml-0.5 tracking-wider">옹벽 총 연장 (m)</label>
+                        <input type="number" value="${state.retainingWallTotalLength}" onchange="updateState({ retainingWallTotalLength: parseFloat(this.value)||0 })" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                    </div>
+                `;
+            }
+
+            // 3. Update Summary Card
+            const info = STRUCTURE_INFO[state.selectedType];
+            document.getElementById('summary-icon').setAttribute('data-lucide', info.icon);
+            document.getElementById('summary-title').innerText = `${info.name} 안전진단 산출표`;
+            
+            // 4. Adjust Table Headers
+            const isSingle = state.selectedType === 'TUNNEL' || state.selectedType === 'RETAINING_WALL';
+            document.getElementById('th-upper-criteria').style.display = isSingle ? 'none' : '';
+            document.getElementById('th-lower-criteria').style.display = isSingle ? 'none' : '';
+            document.getElementById('th-upper-qty').colSpan = isSingle ? 2 : 1;
+            document.getElementById('th-lower-qty').style.display = isSingle ? 'none' : '';
+            if (isSingle) {
+                document.getElementById('th-upper-qty').innerText = '산정기준 및 수량산출 (기준/금회)';
+            } else {
+                document.getElementById('th-upper-qty').innerText = '상부 (기준/금회)';
+                document.getElementById('th-lower-qty').innerText = '하부 (기준/금회)';
+            }
+
+            // 5. Render Table Body
             const body = document.getElementById('results-body');
             body.innerHTML = '';
-
-            const totalLength = state.selectedType === 'BRIDGE' 
-                ? state.bridgeSpans.reduce((acc, s) => acc + s.spanLength * s.spanCount, 0)
-                : (state.selectedType === 'TUNNEL' ? state.tunnelTotalLength : 0);
-            
-            const totalArea = state.selectedType === 'RETAINING_WALL' ? state.retainingWallTotalArea : 0;
-
             const rules = TEST_RULES[state.selectedType];
-            
-            // Group by category
             const basicRules = rules.filter(r => r.category === 'BASIC');
             const optionalRules = rules.filter(r => r.category === 'OPTIONAL');
 
@@ -592,15 +645,7 @@
                 body.appendChild(header);
 
                 list.forEach(rule => {
-                    const res = rule.calculate({
-                        totalLength, totalArea,
-                        inspectionType: state.inspectionType,
-                        facilityClass: state.facilityClass,
-                        bridgeSpans: state.bridgeSpans,
-                        tunnelSections: state.tunnelSections,
-                        wallConcreteType: state.wallConcreteType
-                    });
-
+                    const res = rule.calculate(state);
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-gray-50 transition-colors';
                     
@@ -611,25 +656,61 @@
                         </td>
                     `;
 
-                    if (state.selectedType === 'TUNNEL' || state.selectedType === 'RETAINING_WALL') {
+                    const renderQtyCell = (qty, part) => {
+                        if (qty === '-') return '<span class="text-gray-300 font-bold">-</span>';
+                        if (qty === '판단') return '<span class="text-blue-700 font-black text-[11px]">판단</span>';
+                        
+                        let display = '';
+                        let total = 0;
+                        if (typeof qty === 'object') {
+                            total = Object.values(qty).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+                            display = Object.entries(qty).map(([k, v]) => `
+                                <div class="flex items-center justify-between gap-2 py-1 border-b border-gray-50 last:border-0">
+                                    <span class="text-[7px] text-gray-400 font-bold truncate max-w-[100px]">${k}</span>
+                                    <span class="text-[9px] text-blue-600 font-black">${Math.round(v * 100) / 100}</span>
+                                </div>
+                            `).join('') + `
+                                <div class="mt-1 pt-1 border-t border-blue-100 flex justify-between items-center">
+                                    <span class="text-[8px] text-blue-400 font-black uppercase">Total</span>
+                                    <span class="text-[10px] text-blue-800 font-black">${Math.round(total * 100) / 100}</span>
+                                </div>
+                            `;
+                        } else {
+                            total = typeof qty === 'number' ? qty : 0;
+                            display = `<span class="text-blue-700 font-black text-[11px]">${Math.round(total * 100) / 100}</span>`;
+                        }
+
+                        const currentVal = state.implQtys[rule.id]?.[part] ?? (rule.category === 'OPTIONAL' ? '-' : (typeof qty === 'object' ? total : qty));
+                        return `
+                            <div class="flex flex-col gap-1.5 items-start">
+                                <div class="w-full">${display}</div>
+                                <div class="flex items-center gap-1 w-full bg-purple-50 p-1 rounded-lg border border-purple-100">
+                                    <span class="text-[8px] text-purple-400 font-black">실시:</span>
+                                    <input type="text" value="${currentVal}" onchange="updateImplQty('${rule.id}', '${part}', this.value)" class="w-full bg-transparent text-purple-700 text-[10px] font-black outline-none text-center">
+                                </div>
+                            </div>
+                        `;
+                    };
+
+                    if (isSingle) {
                         cells += `
                             <td colspan="4" class="p-3 border-r border-gray-200 text-[9px]">
                                 <div class="flex flex-col gap-1 items-start">
                                     <div class="text-gray-400 font-medium">기준: ${res.upperCriteria || '-'}</div>
-                                    <div class="w-full">${renderQty(res.upperQty, rule.id, 'upper', rule.category)}</div>
+                                    <div class="w-full">${renderQtyCell(res.upperQty, 'upper')}</div>
                                 </div>
                             </td>
                         `;
                     } else {
                         cells += `
-                            <td class="p-3 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]">${res.upperCriteria || '-'}</td>
-                            <td class="p-3 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px]">${res.lowerCriteria || '-'}</td>
-                            <td class="p-3 border-r border-gray-200 font-medium text-gray-700">${renderQty(res.upperQty, rule.id, 'upper', rule.category)}</td>
-                            <td class="p-3 border-r border-gray-200 font-medium text-gray-700">${renderQty(res.lowerQty, rule.id, 'lower', rule.category)}</td>
+                            <td class="p-3 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px] break-all">${res.upperCriteria || '-'}</td>
+                            <td class="p-3 border-r border-gray-200 text-gray-600 leading-tight whitespace-pre-line text-[9px] break-all">${res.lowerCriteria || '-'}</td>
+                            <td class="p-3 border-r border-gray-200 font-medium text-gray-700">${renderQtyCell(res.upperQty, 'upper')}</td>
+                            <td class="p-3 border-r border-gray-200 font-medium text-gray-700">${renderQtyCell(res.lowerQty, 'lower')}</td>
                         `;
                     }
 
-                    cells += `<td class="p-3 text-gray-500 text-[9px] leading-tight">${res.remarks || '-'}</td>`;
+                    cells += `<td class="p-3 text-gray-500 text-[9px] leading-tight break-all">${res.remarks || '-'}</td>`;
                     tr.innerHTML = cells;
                     body.appendChild(tr);
                 });
@@ -637,15 +718,14 @@
 
             renderRows(basicRules, '기본과업 (Basic Tasks)', 'blue');
             renderRows(optionalRules, '선택과업 (Optional Tasks)', 'purple');
-        }
 
-        function renderFootnotes() {
-            const container = document.getElementById('footnotes');
+            // 6. Render Footnotes
+            const footnotes = document.getElementById('footnotes');
             const totalLength = state.selectedType === 'BRIDGE' 
                 ? state.bridgeSpans.reduce((acc, s) => acc + s.spanLength * s.spanCount, 0)
-                : state.tunnelTotalLength;
+                : (state.selectedType === 'TUNNEL' ? state.tunnelSections[0].length : state.retainingWallTotalLength);
             
-            container.innerHTML = `
+            footnotes.innerHTML = `
                 <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm">
                     <p class="text-[10px] font-black text-gray-700 mb-2 uppercase tracking-widest">
                         ※ ${state.selectedType === 'TUNNEL' ? '터널 재료시험 산출 기준' : '연장별 조정비 산정 기준 (300m 이상)'}
@@ -664,7 +744,7 @@
                         <div>
                             <p class="text-[10px] font-black text-blue-800 mb-1">현재 시설물 산정 정보</p>
                             <p class="text-[11px] font-black text-blue-600">
-                                ${state.selectedType === 'BRIDGE' ? `총 연장(L) = ${totalLength}m (조정비: ${getAdjustmentRatio(totalLength)})` : `총 연장/면적: ${totalLength || state.retainingWallTotalArea}m/㎡`}
+                                ${state.selectedType === 'BRIDGE' ? `총 연장(L) = ${totalLength}m (조정비: ${getAdjustmentRatio(totalLength)})` : `총 연장: ${totalLength}m`}
                             </p>
                         </div>
                         <div class="text-[9px] text-blue-400 font-bold italic">
@@ -673,46 +753,10 @@
                     </div>
                 </div>
             `;
+
+            // Refresh Lucide Icons
+            lucide.createIcons();
         }
-
-        function render() {
-            renderTypeSelector();
-            renderDynamicInputs();
-            
-            const info = STRUCTURE_INFO[state.selectedType];
-            document.getElementById('summary-icon').innerText = info.icon;
-            document.getElementById('summary-title').innerText = `${info.name} 안전진단 산출표`;
-            
-            // Adjust table headers
-            const isSingle = state.selectedType === 'TUNNEL' || state.selectedType === 'RETAINING_WALL';
-            document.getElementById('th-upper-criteria').style.display = isSingle ? 'none' : '';
-            document.getElementById('th-lower-criteria').style.display = isSingle ? 'none' : '';
-            document.getElementById('th-upper-qty').colSpan = isSingle ? 2 : 1;
-            document.getElementById('th-lower-qty').style.display = isSingle ? 'none' : '';
-            if (isSingle) {
-                document.getElementById('th-upper-qty').innerText = '산정기준 및 수량산출 (기준/금회)';
-            } else {
-                document.getElementById('th-upper-qty').innerText = '상부 (기준/금회)';
-                document.getElementById('th-lower-qty').innerText = '하부 (기준/금회)';
-            }
-
-            renderTable();
-            renderFootnotes();
-        }
-
-        function exportData() {
-            const data = JSON.stringify(state, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `safety_inspection_data_${Date.now()}.json`;
-            a.click();
-        }
-
-        // --- 5. Event Listeners ---
-        document.getElementById('inspection-type').onchange = (e) => updateState({ inspectionType: e.target.value });
-        document.getElementById('facility-class').onchange = (e) => updateState({ facilityClass: e.target.value });
 
         // Initial Render
         render();
