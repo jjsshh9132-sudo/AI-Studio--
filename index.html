@@ -178,7 +178,7 @@
                         return { 
                             upperQty: uQty, 
                             lowerQty: lQty, 
-                            upperCriteria: isSmall ? '5경간 이내: 2~3개소' : '5경간 이상: 3~6개소', 
+                            upperCriteria: '5경간 이내: 2~3개소\n5경간 이상: 3~6개소', 
                             lowerCriteria: '상부구조 수량 준용' 
                         };
                     } else if (isDD) {
@@ -187,7 +187,7 @@
                         return { 
                             upperQty: uQty, 
                             lowerQty: lQty, 
-                            upperCriteria: isSmall ? '5경간 이내: 4~6개소' : '5경간 이상: 6~12개소', 
+                            upperCriteria: '5경간 이내: 4~6개소\n5경간 이상: 6~12개소', 
                             lowerCriteria: '상부구조 수량 준용' 
                         };
                     }
@@ -505,8 +505,8 @@
                     const valL = (state.implQtys[rule.id] && state.implQtys[rule.id].lower !== undefined) ? state.implQtys[rule.id].lower : res.lowerQty;
 
                     return `<tr class="hover:bg-gray-50 transition-colors"><td class="p-3 border-r border-gray-200 font-bold text-gray-900 text-[10px] text-center">${rule.name}</td>
-                        ${isBridge ? `<td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.lowerCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.lowerQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valL}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`
-                        : `<td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria || '-'}</td><td colspan="2" class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`}
+                        ${isBridge ? `<td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.upperCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.lowerCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.lowerQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valL}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`
+                        : `<td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.upperCriteria || '-'}</td><td colspan="2" class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`}
                         <td class="p-2 text-[9px] text-gray-400 text-center italic">지침 기준 준수</td></tr>`;
                 }).join('');
                 return header + rows;
