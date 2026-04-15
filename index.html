@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>시설물 안전진단 재료시험 산출기 (최종본)</title>
+    <title>시설물 안전진단 재료시험 산출기 (Full Version)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', 'Noto Sans KR', sans-serif; background-color: #f9fafb; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .table-fixed { table-layout: fixed; }
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        @media print { .no-print { display: none !important; } }
+        .transition-all { transition: all 0.2s ease; }
+        @media print {
+            aside, button, .mt-auto { display: none !important; }
+            main { padding: 0 !important; }
+            .max-w-5xl { max-width: 100% !important; }
+            .shadow-xl, .shadow-sm { shadow: none !important; border: 1px solid #eee !important; }
+        }
     </style>
 </head>
 <body class="text-gray-900 antialiased">
     <div id="app" class="min-h-screen flex flex-col md:flex-row">
         <!-- 사이드바 -->
-        <aside class="no-print w-full md:w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 h-screen sticky top-0 overflow-y-auto no-scrollbar">
+        <aside class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 shadow-sm overflow-y-auto no-scrollbar h-screen sticky top-0">
             <div class="p-5 border-b border-gray-100 bg-gray-50/50">
                 <div class="flex items-center gap-2 mb-1">
                     <div class="bg-indigo-600 p-1.5 rounded-lg shadow-md shadow-indigo-100">
@@ -25,74 +32,80 @@
                     </div>
                     <h2 class="text-[11px] font-black text-gray-900 uppercase tracking-tight">시설물 설정</h2>
                 </div>
+                <p class="text-[9px] text-gray-500 font-bold">제원 및 점검 종류를 선택하세요</p>
             </div>
 
-            <!-- 시설물 목록 -->
+            <!-- 시설물 목록 섹션 -->
             <div class="p-5 border-b border-gray-100">
                 <div class="flex items-center justify-between mb-3">
                     <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">시설물 목록</label>
                     <button onclick="addFacility()" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800">+ 추가</button>
                 </div>
-                <div id="facility-list" class="space-y-2"></div>
+                <div id="facility-list" class="space-y-2 max-h-48 overflow-y-auto no-scrollbar"></div>
             </div>
 
             <div class="p-5 space-y-6">
-                <!-- 01. 종류 선택 -->
                 <section>
                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">01. 시설물 종류</label>
                     <div class="grid grid-cols-3 gap-2" id="type-selector"></div>
                 </section>
 
-                <!-- 02. 기본 설정 -->
                 <section class="space-y-4">
                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">02. 기본 설정</label>
                     <div>
-                        <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">점검 종류</label>
-                        <select id="inspection-type" onchange="updateState({inspectionType: this.value})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"></select>
+                        <label class="block text-[9px] font-black text-gray-500 uppercase mb-1 ml-0.5">점검 종류</label>
+                        <select id="inspection-type" onchange="updateState({inspectionType: this.value})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"></select>
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">시설물 종별</label>
-                        <select id="facility-class" onchange="updateState({facilityClass: this.value})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold outline-none"></select>
+                        <label class="block text-[9px] font-black text-gray-500 uppercase mb-1 ml-0.5">시설물 종별</label>
+                        <select id="facility-class" onchange="updateState({facilityClass: this.value})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"></select>
                     </div>
                 </section>
 
-                <!-- 03. 세부 제원 입력 -->
                 <section class="pt-4 border-t border-gray-100">
                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">03. 세부 제원 입력</label>
                     <div id="dynamic-inputs" class="space-y-4"></div>
                 </section>
             </div>
+            
+            <div class="mt-auto p-5 border-t border-gray-100">
+                <button onclick="resetData()" class="w-full py-2 text-[10px] font-black text-gray-400 hover:text-red-500 transition-all flex items-center justify-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> 데이터 초기화
+                </button>
+            </div>
         </aside>
 
         <!-- 메인 콘텐츠 -->
-        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+        <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto space-y-6">
-                <!-- 헤더 -->
-                <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div class="flex items-center gap-5">
-                        <div id="header-icon-container" class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                <div class="bg-white rounded-3xl border border-gray-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 opacity-40"></div>
+                    <div class="flex items-center gap-5 relative z-10 w-full">
+                        <div id="header-icon-container" class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100 text-white shrink-0">
                             <i id="header-icon" data-lucide="calculator" class="w-7 h-7"></i>
                         </div>
-                        <div>
-                            <h1 id="header-title" class="text-xl font-black text-gray-900 tracking-tight">시설물 안전진단 산출표</h1>
-                            <div id="header-info" class="mt-1"></div>
+                        <div class="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div>
+                                <h1 id="header-title" class="text-xl md:text-2xl font-black text-gray-900 tracking-tight">시설물 안전진단 산출표</h1>
+                                <p class="text-xs text-gray-500 font-bold mt-1">국토안전관리원 세부지침 최신 기준 적용</p>
+                            </div>
+                            <div id="header-info" class="flex items-center gap-2"></div>
                         </div>
                     </div>
-                    <button onclick="window.print()" class="no-print flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black hover:bg-black transition-all">
+                    <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-lg relative z-10 shrink-0">
                         <i data-lucide="printer" class="w-3.5 h-3.5"></i> 인쇄 / PDF
                     </button>
                 </div>
 
-                <!-- 결과 테이블 -->
                 <div class="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full border-collapse text-left min-w-[900px]">
+                        <table class="w-full border-collapse text-left min-w-[900px] table-fixed">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th rowspan="2" class="p-3 border-r border-gray-200 font-black text-gray-700 text-[10px] text-center w-32">시험 항목</th>
-                                    <th colspan="2" class="p-3 border-r border-gray-200 font-black text-gray-700 text-[10px] text-center">산정 기준</th>
+                                    <th rowspan="2" class="p-3 border-r border-gray-200 font-black text-gray-700 text-[10px] w-[140px] text-center">시험 항목</th>
+                                    <th colspan="2" class="p-3 border-r border-gray-200 font-black text-gray-700 text-[10px] text-center">세부지침 기준</th>
                                     <th colspan="2" class="p-3 border-r border-gray-200 font-black text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>
-                                    <th rowspan="2" class="p-3 font-black text-gray-700 text-[10px] text-center w-24">비 고</th>
+                                    <th rowspan="2" class="p-3 font-black text-gray-700 text-[10px] w-[120px] text-center">비 고</th>
                                 </tr>
                                 <tr class="bg-gray-50 border-b border-gray-200" id="table-sub-header"></tr>
                             </thead>
@@ -100,22 +113,16 @@
                         </table>
                     </div>
                 </div>
-
-                <div class="no-print mt-auto pt-4 border-t border-gray-100">
-                    <button onclick="resetData()" class="w-full py-2 text-[10px] font-black text-gray-400 hover:text-red-500 flex items-center justify-center gap-1.5">
-                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> 데이터 초기화
-                    </button>
-                </div>
             </div>
         </main>
     </div>
 
     <script>
-        // --- 데이터 및 상수 ---
+        // --- 데이터 상수 ---
         const STRUCTURE_INFO = {
-            BRIDGE: { name: '교량', icon: 'construction', color: 'indigo' },
-            TUNNEL: { name: '터널', icon: 'map', color: 'emerald' },
-            RETAINING_WALL: { name: '옹벽', icon: 'brick-wall', color: 'orange' }
+            BRIDGE: { name: '교량', icon: 'construction' },
+            TUNNEL: { name: '터널', icon: 'map' },
+            RETAINING_WALL: { name: '옹벽', icon: 'brick-wall' }
         };
 
         const INSPECTION_INFO = {
@@ -125,23 +132,59 @@
             PERFORMANCE_EVAL_2: { name: '2종 성능평가' }
         };
 
-        const FACILITY_CLASS_INFO = { CLASS_1: '1종 시설물', CLASS_2: '2종 시설물', CLASS_3: '3종 시설물', OTHER: '기타' };
-        const BRIDGE_TYPES = ['STB (강박스)', 'SPG (강플레이트)', 'PSCI (PSC I형)', 'SLAB (RC슬래브)', 'RA (라멘)', '트러스교', '아치교', '기타'];
+        const FACILITY_CLASS_INFO = {
+            CLASS_1: '1종 시설물', CLASS_2: '2종 시설물', CLASS_3: '3종 시설물', OTHER: '기타'
+        };
+
+        const BRIDGE_TYPES = ['STB (강박스)', 'SPG (강플레이트)', 'PSCI (PSC I형)', 'SLAB (RC슬래브)', 'RA (라멘)', '트러스교', '아치교', '현수교', '사장교', '기타'];
 
         // --- 상태 관리 ---
-        let appData = JSON.parse(localStorage.getItem('safety_diag_final_v5')) || {
+        let appData = JSON.parse(localStorage.getItem('safety_diag_data')) || {
             facilities: [{
-                id: '1', name: '기본 시설물 1', selectedType: 'BRIDGE', inspectionType: 'DETAILED_DIAGNOSIS', facilityClass: 'CLASS_1',
-                bridgeSpans: [{ id: 's1', type: 'STB (강박스)', spanLength: 30, spanCount: 3 }],
-                tunnelSections: [{ id: 't1', length: 500, concreteType: 'REINFORCED' }],
-                retainingWallSections: [{ id: 'r1', length: 100, type: 'CONCRETE' }],
-                evalUnit: 20, implQtys: {}
+                id: '1',
+                name: '기본 시설물 1',
+                selectedType: 'BRIDGE',
+                inspectionType: 'DETAILED_DIAGNOSIS',
+                facilityClass: 'CLASS_1',
+                bridgeSpans: [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }],
+                tunnelSections: [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }],
+                retainingWallSections: [{ id: '1', type: 'CONCRETE', length: 100 }],
+                evalUnit: 20,
+                implQtys: {}
             }],
             currentId: '1'
         };
 
-        function getActiveFacility() { return appData.facilities.find(f => f.id === appData.currentId) || appData.facilities[0]; }
-        function saveToLocal() { localStorage.setItem('safety_diag_final_v5', JSON.stringify(appData)); }
+        function getActiveFacility() {
+            const facility = appData.facilities.find(f => f.id === appData.currentId) || appData.facilities[0];
+            
+            // 데이터 구조 호환성 보장
+            if (!facility.bridgeSpans) facility.bridgeSpans = [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }];
+            if (!facility.tunnelSections) facility.tunnelSections = [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }];
+            if (!facility.retainingWallSections) facility.retainingWallSections = [{ id: '1', type: 'CONCRETE', length: 100 }];
+            if (!facility.implQtys) facility.implQtys = {};
+            if (facility.evalUnit === undefined) facility.evalUnit = 20;
+
+            // 각 섹션의 기본값 보장
+            facility.bridgeSpans.forEach(s => {
+                if (s.spanLength === undefined) s.spanLength = 30;
+                if (s.spanCount === undefined) s.spanCount = 1;
+            });
+            facility.tunnelSections.forEach(s => {
+                if (s.length === undefined) s.length = 500;
+                if (s.concreteType === undefined) s.concreteType = 'REINFORCED';
+            });
+            facility.retainingWallSections.forEach(s => {
+                if (s.length === undefined) s.length = 100;
+                if (s.type === undefined) s.type = 'CONCRETE';
+            });
+
+            return facility;
+        }
+
+        function saveToLocal() {
+            localStorage.setItem('safety_diag_data', JSON.stringify(appData));
+        }
 
         function updateState(updates) {
             const facility = getActiveFacility();
@@ -150,132 +193,359 @@
             render();
         }
 
-        // --- 계산 로직 ---
+        function addFacility() {
+            const newId = Date.now().toString();
+            appData.facilities.push({
+                id: newId,
+                name: `신규 시설물 ${appData.facilities.length + 1}`,
+                selectedType: 'BRIDGE',
+                inspectionType: 'DETAILED_DIAGNOSIS',
+                facilityClass: 'CLASS_1',
+                bridgeSpans: [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }],
+                tunnelSections: [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }],
+                retainingWallSections: [{ id: '1', type: 'CONCRETE', length: 100 }],
+                evalUnit: 20,
+                implQtys: {}
+            });
+            appData.currentId = newId;
+            saveToLocal();
+            render();
+        }
+
+        function deleteFacility(id, event) {
+            event.stopPropagation();
+            if (appData.facilities.length <= 1) return alert('최소 하나의 시설물은 있어야 합니다.');
+            if (!confirm('이 시설물을 삭제하시겠습니까?')) return;
+            appData.facilities = appData.facilities.filter(f => f.id !== id);
+            if (appData.currentId === id) appData.currentId = appData.facilities[0].id;
+            saveToLocal();
+            render();
+        }
+
+        function selectFacility(id) {
+            appData.currentId = id;
+            saveToLocal();
+            render();
+        }
+
+        function renameFacility(id, newName) {
+            const facility = appData.facilities.find(f => f.id === id);
+            if (facility) {
+                facility.name = newName;
+                saveToLocal();
+            }
+        }
+
+        // --- 계산 유틸리티 ---
+        const calcByLength = (l, d) => Math.max(1, Math.ceil(l / d));
         const getAdjustmentRatio = (l) => {
             if (l <= 300) return 1.0;
             if (l <= 500) return Number((1.0 - (0.2 * (l - 300) / 200)).toFixed(3));
             if (l <= 1000) return Number((0.8 - (0.2 * (l - 500) / 500)).toFixed(3));
             if (l <= 2000) return Number((0.6 - (0.2 * (l - 1000) / 1000)).toFixed(3));
-            return 0.4;
+            if (l <= 4000) return Number((0.4 - (0.15 * (l - 2000) / 2000)).toFixed(3));
+            return 0.25;
         };
+        const isSteel = (t) => t.includes('강') || t.includes('STB') || t.includes('SPG') || t.includes('트러스');
 
+        // --- 모든 시험 항목 규칙 ---
         const TEST_RULES = {
             BRIDGE: [
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
-                    const totalL = s.bridgeSpans.reduce((acc, sp) => acc + (sp.spanLength * sp.spanCount), 0);
-                    const isD = s.inspectionType.includes('DIAGNOSIS') || s.inspectionType.includes('EVAL_1');
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const spans = s.bridgeSpans || [];
+                    const totalL = spans.reduce((acc, sp) => acc + (parseFloat(sp.spanLength) || 0) * (parseInt(sp.spanCount) || 0), 0);
                     const r = getAdjustmentRatio(totalL);
-                    const uQty = Math.ceil((totalL / 50) * (isD ? 2 : 1) * r);
-                    const lQty = Math.ceil((totalL / 50) * r);
-                    return { upperQty: uQty, lowerQty: lQty, upperCriteria: isD ? '2개소/50m' : '1개소/50m', lowerCriteria: '1개소/50m' };
+                    const uQty = Math.ceil(calcByLength(totalL, 50) * (isD ? 2 : 1) * r);
+                    const lQty = Math.ceil(calcByLength(totalL, 50) * r);
+                    return { upperQty: uQty, lowerQty: lQty, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m' };
                 }},
-                { id: 'ultrasonic', name: '초음파법', calculate: (s) => {
-                    const totalL = s.bridgeSpans.reduce((acc, sp) => acc + (sp.spanLength * sp.spanCount), 0);
+                { id: 'ultrasonic', name: '초음파법(비파괴)', calculate: (s) => {
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const spans = s.bridgeSpans || [];
+                    const totalL = spans.reduce((acc, sp) => acc + (parseFloat(sp.spanLength) || 0) * (parseInt(sp.spanCount) || 0), 0);
                     const r = getAdjustmentRatio(totalL);
-                    return { upperQty: Math.ceil((totalL / 50) * r), lowerQty: Math.ceil((totalL / 50) * r), upperCriteria: '1개소/50m', lowerCriteria: '1개소/50m' };
+                    const qty = Math.ceil(calcByLength(totalL, 50) * (isD ? 2 : 1) * r);
+                    const lQty = Math.ceil(calcByLength(totalL, 50) * r);
+                    return { upperQty: qty, lowerQty: lQty, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m' };
                 }},
                 { id: 'rebar_scan', name: '철근탐사', calculate: (s) => {
-                    const totalL = s.bridgeSpans.reduce((acc, sp) => acc + (sp.spanLength * sp.spanCount), 0);
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const spans = s.bridgeSpans || [];
+                    const totalL = spans.reduce((acc, sp) => acc + (parseFloat(sp.spanLength) || 0) * (parseInt(sp.spanCount) || 0), 0);
                     const r = getAdjustmentRatio(totalL);
-                    return { upperQty: Math.ceil((totalL / 50) * r), lowerQty: Math.ceil((totalL / 50) * r), upperCriteria: '1개소/50m', lowerCriteria: '1개소/50m' };
+                    const qty = Math.ceil(calcByLength(totalL, 50) * (isD ? 2 : 1) * r);
+                    const lQty = Math.ceil(calcByLength(totalL, 50) * r);
+                    return { upperQty: qty, lowerQty: lQty, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m' };
                 }},
-                { id: 'carbonation', name: '탄산화깊이', calculate: (s) => {
-                    const totalSpans = s.bridgeSpans.reduce((acc, sp) => acc + sp.spanCount, 0);
-                    const isD = s.inspectionType.includes('DIAGNOSIS') || s.inspectionType.includes('EVAL_1');
-                    const uQty = totalSpans < 5 ? (isD ? 2 : 1) : (isD ? 3 : 2);
-                    return { upperQty: uQty, lowerQty: uQty * 2, upperCriteria: '경간수 기준', lowerCriteria: '상부의 2배' };
+                { id: 'carbonation', name: '탄산화깊이 측정', calculate: (s) => {
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION' || s.inspectionType === 'PERFORMANCE_EVAL_2';
+                    const isDD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const spans = s.bridgeSpans || [];
+                    const totalSpans = spans.reduce((acc, sp) => acc + (parseInt(sp.spanCount) || 0), 0);
+                    const isSmall = totalSpans < 5;
+                    if (isDI) {
+                        const uQty = isSmall ? 1 : 2;
+                        const lQty = isSmall ? 2 : 4;
+                        return { upperQty: uQty, lowerQty: lQty, upperCriteria: '5경간 이내: 2~3개소\n5경간 이상: 3~6개소', lowerCriteria: '상부구조 수량 준용' };
+                    } else if (isDD) {
+                        const uQty = isSmall ? 2 : 3;
+                        const lQty = isSmall ? 4 : 6;
+                        return { upperQty: uQty, lowerQty: lQty, upperCriteria: '5경간 이내: 4~6개소\n5경간 이상: 6~12개소', lowerCriteria: '상부구조 수량 준용' };
+                    }
+                    return { upperQty: '-', lowerQty: '-', upperCriteria: '-', lowerCriteria: '-' };
                 }},
-                { id: 'chloride', name: '염화물함유량', calculate: () => ({ upperQty: 1, lowerQty: 2, upperCriteria: '상부 1개소', lowerCriteria: '하부 2개소' })},
-                { id: 'steel_ut', name: '강재용접부(UT)', calculate: () => ({ upperQty: '전체', lowerQty: '-', upperCriteria: '거더당 1~2개소' })},
-                { id: 'steel_mt', name: '강재용접부(MT)', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '필요시 실시' })},
-                { id: 'steel_pt', name: '강재용접부(PT)', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '필요시 실시' })},
-                { id: 'coating', name: '도막두께', calculate: () => ({ upperQty: '전체', lowerQty: '-', upperCriteria: '경간당 3~5개소' })},
-                { id: 'crack_depth', name: '균열깊이조사', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '주요균열 발생시', lowerCriteria: '주요균열 발생시' })},
-                { id: 'rebar_corrosion', name: '철근부식도', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '필요시 실시', lowerCriteria: '필요시 실시' })},
-                { id: 'load_test', name: '재하시험', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '진단시 검토' })}
+                { id: 'chloride', name: '염화물 함유량', calculate: () => ({ upperQty: 1, lowerQty: 2, upperCriteria: '상부구조 1개소 이상', lowerCriteria: '하부구조 2개소 이상' })},
+                { id: 'crack_depth', name: '균열깊이 조사', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '부재의 중요도를 고려하여 결정', lowerCriteria: '책임기술자의 판단에 따라 수량 결정' })},
+                { id: 'steel_ut', name: '강재용접부 초음파', calculate: (s) => {
+                    const hasSteel = s.bridgeSpans.some(sp => isSteel(sp.type));
+                    if (!hasSteel) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    return { upperQty: '전체', lowerQty: '-', upperCriteria: '플레이트거더: 1개소/경간별 거더\n박스거더: 2개소/경간별 거더' };
+                }},
+                { id: 'coating_thickness', name: '도막두께 측정', calculate: (s) => {
+                    const hasSteel = s.bridgeSpans.some(sp => isSteel(sp.type));
+                    if (!hasSteel) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const criteria = s.inspectionType === 'PERFORMANCE_EVAL_1' ? '강 부재: 5개소/대상경간' : '강 부재: 2~3개소/대상경간';
+                    return { upperQty: '전체', lowerQty: '-', upperCriteria: criteria };
+                }},
+                { id: 'core_sampling', name: '코어채취(강도)', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'underwater_survey', name: '수중조사', calculate: () => ({ upperQty: '-', lowerQty: '판단', lowerCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'load_test', name: '재하시험', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'rebar_corrosion', name: '철근부식도', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'magnetic_particle', name: '자분탐상(MT)', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'radiographic', name: '방사선투과(RT)', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'clearance_survey', name: '여유고 측량', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })}
             ],
             TUNNEL: [
-                { id: 'visual', name: '외관조사', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '전구간' })},
+                { id: 'survey_section', name: '측정분할', calculate: (s) => {
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1' || s.inspectionType === 'PERFORMANCE_EVAL_2';
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
+                    const criteria = isD ? '5~50m 간격' : (isDI ? '5~20m 간격' : '100m 간격');
+                    return { upperQty: '실시', lowerQty: '-', upperCriteria: criteria };
+                }},
                 { id: 'cross_section', name: '단면측량', calculate: (s) => {
-                    const totalL = s.tunnelSections.reduce((acc, sec) => acc + sec.length, 0);
-                    return { upperQty: Math.ceil(totalL / 200) + 1, lowerQty: '-', upperCriteria: '200m당 1개소' };
+                    const sections = s.tunnelSections || [];
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const qty = Math.ceil(totalL / 200) + 1;
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: '(총연장÷200m)+1개소' };
                 }},
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
-                    const totalL = s.tunnelSections.reduce((acc, sec) => acc + sec.length, 0);
-                    const isD = s.inspectionType.includes('DIAGNOSIS') || s.inspectionType.includes('EVAL_1');
-                    const qty = isD ? Math.ceil(totalL / 100) * 2 : Math.ceil(totalL / 300);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? '2개소/100m' : '1개소/300m' };
+                    const sections = s.tunnelSections || [];
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
+                    const isPE2 = s.inspectionType === 'PERFORMANCE_EVAL_2';
+                    const isPE1 = s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    if (isDI || isPE2) {
+                        const qty = Math.ceil(totalL / 300);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '(총연장 ÷ 300m)개소' };
+                    }
+                    const qty = Math.ceil(totalL / 100) * 2;
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: isPE1 ? '(총연장 ÷ 100m) × 2개소' : '(형식별 연장÷100m)×2개소' };
                 }},
-                { id: 'ultrasonic', name: '초음파법', calculate: (s) => {
-                    const totalL = s.tunnelSections.reduce((acc, sec) => acc + sec.length, 0);
-                    return { upperQty: Math.ceil(totalL / 100) * 2, lowerQty: '-', upperCriteria: '2개소/100m' };
+                { id: 'ultrasonic', name: '초음파전달속도', calculate: (s) => {
+                    const sections = s.tunnelSections || [];
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const qty = Math.ceil(totalL / 100) * 2;
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: '(총연장 ÷ 100m) × 2개소' };
                 }},
                 { id: 'rebar_scan', name: '철근탐사', calculate: (s) => {
-                    const rebarL = s.tunnelSections.filter(sec => sec.concreteType === 'REINFORCED').reduce((acc, sec) => acc + sec.length, 0);
-                    if (rebarL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '무근 제외' };
-                    const qty = rebarL < 1000 ? 4 : 4 + Math.ceil((rebarL - 1000) / 500);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '1km미만 4개소' };
+                    const sections = s.tunnelSections || [];
+                    const reinforcedL = sections.filter(sec => sec.concreteType === 'REINFORCED').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (reinforcedL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
+                    const isPE2 = s.inspectionType === 'PERFORMANCE_EVAL_2';
+                    if (isDI || isPE2) return { upperQty: '준용', lowerQty: '-', upperCriteria: '탄산화 깊이 측정 수량 준용' };
+                    const qty = reinforcedL < 1000 ? 4 : 4 + Math.ceil((reinforcedL - 1000) / 500);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: '1,000m 미만: 4개소\n1,000m 이상: 최소 4개소 + 500m당 1개소 추가' };
                 }},
-                { id: 'carbonation', name: '탄산화깊이', calculate: (s) => {
-                    const totalL = s.tunnelSections.reduce((acc, sec) => acc + sec.length, 0);
-                    const qty = totalL < 1000 ? 2 : 2 + Math.ceil((totalL - 1000) / 1000);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '1km당 1개소 추가' };
+                { id: 'chloride', name: '염화물 함유량', calculate: (s) => {
+                    const sections = s.tunnelSections || [];
+                    const reinforcedL = sections.filter(sec => sec.concreteType === 'REINFORCED').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (reinforcedL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isPE1 = s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const qty = reinforcedL < 1000 ? (isPE1 ? 4 : 2) : (isPE1 ? 4 + Math.ceil((reinforcedL - 1000) / 500) : 2 + Math.floor(reinforcedL / 1000));
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: '연장 및 점검종류별 기준 상이' };
                 }},
-                { id: 'chloride', name: '염화물함유량', calculate: () => ({ upperQty: '준용', lowerQty: '-', upperCriteria: '철근탐사 수량' })},
-                { id: 'lighting', name: '조도/휘도', calculate: () => ({ upperQty: 10, lowerQty: '-', upperCriteria: '터널당 10개소' })}
+                { id: 'carbonation', name: '탄산화 깊이', calculate: (s) => {
+                    const sections = s.tunnelSections || [];
+                    const reinforcedL = sections.filter(sec => sec.concreteType === 'REINFORCED').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (reinforcedL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const divisor = isD ? 500 : 1000;
+                    const base = isD ? 4 : 2;
+                    const qty = reinforcedL < 1000 ? base : base + Math.ceil((reinforcedL - 1000) / divisor);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: `최소 ${base}개소 + ${divisor}m당 1개소 추가` };
+                }},
+                { id: 'rebar_corrosion', name: '철근부식도', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '책임기술자 판단' })},
+                { id: 'crack_depth', name: '균열깊이 조사', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '책임기술자 판단' })},
+                { id: 'luminance', name: '휘도 측정', calculate: () => ({ upperQty: 10, lowerQty: '-', upperCriteria: '총 10개소' })},
+                { id: 'illuminance', name: '조도 측정', calculate: () => ({ upperQty: 10, lowerQty: '-', upperCriteria: '총 10개소' })}
             ],
             RETAINING_WALL: [
-                { id: 'visual', name: '외관조사', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '전구간' })},
+                { id: 'survey_section', name: '측정분할', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '20m 간격, 신축이음부' })},
+                { id: 'survey', name: '측량', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '옹벽의 선형측량 및 수준측량' })},
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
-                    const concreteL = s.retainingWallSections.filter(sec => sec.type !== 'STONE').reduce((acc, sec) => acc + sec.length, 0);
-                    if (concreteL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '석축 제외' };
-                    const qty = Math.ceil(concreteL / 50);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '50m당 1개소' };
+                    const sections = s.retainingWallSections || [];
+                    if (sections.every(sec => sec.type === 'STONE')) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const qty = isD ? Math.ceil(totalL / (s.evalUnit || 20)) : Math.ceil(totalL / 50);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? `평가단위(${(s.evalUnit || 20)}m)당 1개소` : '(총 연장 ÷ 50m)개소' };
                 }},
-                { id: 'carbonation', name: '탄산화깊이', calculate: (s) => {
-                    const concreteL = s.retainingWallSections.filter(sec => sec.type !== 'STONE').reduce((acc, sec) => acc + sec.length, 0);
-                    if (concreteL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '석축 제외' };
-                    const qty = concreteL < 100 ? 2 : 2 + Math.ceil((concreteL - 100) / 100);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '100m당 1개소' };
+                { id: 'carbonation', name: '탄산화 깊이', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    if (sections.every(sec => sec.type === 'STONE')) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const divisor = isD ? 50 : 100;
+                    const qty = totalL < 100 ? 2 : 2 + Math.ceil((totalL - 100) / divisor);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: `100m 미만: 2개소 + ${divisor}m당 1개소 추가` };
                 }},
-                { id: 'stone_fill', name: '충전콘크리트', calculate: (s) => {
-                    const stoneL = s.retainingWallSections.filter(sec => sec.type === 'STONE').reduce((acc, sec) => acc + sec.length, 0);
-                    if (stoneL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '석축 전용' };
-                    const qty = Math.ceil(stoneL / s.evalUnit);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '평가단위당 1개소' };
+                { id: 'chloride', name: '염화물 함유량', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    if (sections.every(sec => sec.type === 'STONE')) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const divisor = isD ? 50 : 100;
+                    const qty = totalL < 100 ? 2 : 2 + Math.ceil((totalL - 100) / divisor);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: `100m 미만: 2개소 + ${divisor}m당 1개소 추가` };
+                }},
+                { id: 'filling_concrete', name: '충전콘크리트(석축)', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    const stoneL = sections.filter(sec => sec.type === 'STONE').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (stoneL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const qty = Math.ceil(stoneL / (s.evalUnit || 20));
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: `평가단위(${(s.evalUnit || 20)}m)당 1개소` };
+                }},
+                { id: 'rock_weathering', name: '암반풍화도', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    const stoneL = sections.filter(sec => sec.type === 'STONE').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (stoneL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const qty = Math.ceil(stoneL / (s.evalUnit || 20));
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: `평가단위(${(s.evalUnit || 20)}m)당 1개소` };
                 }},
                 { id: 'rebar_scan', name: '철근탐사', calculate: (s) => {
-                    const reinforcedL = s.retainingWallSections.filter(sec => sec.type === 'CONCRETE').reduce((acc, sec) => acc + sec.length, 0);
-                    if (reinforcedL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '무근/석축 제외' };
-                    const qty = Math.ceil(reinforcedL / s.evalUnit);
-                    return { upperQty: qty, lowerQty: '-', upperCriteria: '평가단위당 1개소' };
+                    const sections = s.retainingWallSections || [];
+                    const reinforcedL = sections.filter(sec => sec.type === 'CONCRETE').reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    if (reinforcedL === 0) return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const qty = isD ? Math.ceil(reinforcedL / (s.evalUnit || 20)) : Math.ceil(reinforcedL / 50);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: isD ? `평가단위(${(s.evalUnit || 20)}m)당 1개소` : '(총 연장 ÷ 50m)개소' };
+                }},
+                { id: 'crack_depth', name: '균열깊이 조사', calculate: (s) => {
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
+                    const criteria = isDI ? '부재 중요도 고려' : '평가단위에서 조사된 최대균열폭에 실시';
+                    return { upperQty: '판단', lowerQty: '-', upperCriteria: criteria };
+                }},
+                { id: 'deformation_survey', name: '변형 및 변위조사', calculate: (s) => {
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
+                    const criteria = isDI ? '과업내용에 의함' : '최소 1개소 이상 설치 및 최소 3개월 이상 측정';
+                    return { upperQty: '판단', lowerQty: '-', upperCriteria: criteria };
+                }},
+                { id: 'core_sampling', name: '코어채취', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    if (isD) {
+                        const qty = totalL < 100 ? 2 : 2 + Math.ceil((totalL - 100) / 50);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '100m 미만: 2개소\n100m 이상: 최소 2개소 + 50m당 1개소 추가' };
+                    }
+                    return { upperQty: '판단', lowerQty: '-', upperCriteria: '책임기술자 판단에 따라 결정' };
+                }},
+                { id: 'ground_survey', name: '지반조사', calculate: () => ({ upperQty: 1, lowerQty: '-', upperCriteria: '대표지반 설정 1단면 이상' })},
+                { id: 'groundwater', name: '지하수위측정', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '대표지반 설정 1회 이상' })},
+                { id: 'inclinometer', name: '지중경사계측', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'earth_pressure', name: '토압계측', calculate: () => ({ upperQty: '판단', lowerQty: '-', upperCriteria: '과업 내용에 의해 조사 및 수량 결정' })},
+                { id: 'coating_thickness', name: '도막두께', calculate: (s) => {
+                    const sections = s.retainingWallSections || [];
+                    const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                    const qty = totalL < 100 ? 1 : 1 + Math.ceil((totalL - 100) / 100);
+                    return { upperQty: qty, lowerQty: '-', upperCriteria: '100m 미만: 1개소\n100m 이상: 최소 1개소 + 100m당 1개소 추가' };
                 }}
             ]
         };
 
-        // --- UI 렌더링 ---
+        // --- 과업 구분 로직 ---
+        function getCategory(ruleId, s) {
+            const isDetailed = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+            
+            if (s.selectedType === 'BRIDGE') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    const basic = ['rebound', 'carbonation'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    return 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    const basic = ['rebound', 'rebar_scan', 'carbonation', 'chloride', 'coating_thickness'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    return 'OPTIONAL';
+                } else if (isDetailed) {
+                    const basic = ['rebound', 'ultrasonic', 'rebar_scan', 'carbonation', 'chloride', 'crack_depth', 'steel_ut', 'coating_thickness'];
+                    return basic.includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            } else if (s.selectedType === 'TUNNEL') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    const basic = ['survey_section', 'rebound', 'carbonation'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    return 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_1') {
+                    const basic = ['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'rebar_corrosion', 'crack_depth', 'carbonation', 'chloride', 'luminance', 'illuminance'];
+                    return basic.includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    const basic = ['survey_section', 'rebound', 'carbonation', 'chloride', 'luminance', 'illuminance'];
+                    return basic.includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                } else if (s.inspectionType === 'DETAILED_DIAGNOSIS') {
+                    const basic = ['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'chloride', 'carbonation'];
+                    return basic.includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            } else if (s.selectedType === 'RETAINING_WALL') {
+                if (s.inspectionType === 'DETAILED_INSPECTION') {
+                    const basic = ['survey_section', 'survey', 'rebound', 'carbonation', 'rock_weathering', 'filling_concrete'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    return 'OPTIONAL';
+                } else if (isDetailed) {
+                    const optional = ['crack_depth', 'deformation_survey', 'core_sampling', 'groundwater', 'inclinometer', 'earth_pressure', 'coating_thickness'];
+                    return optional.includes(ruleId) ? 'OPTIONAL' : 'BASIC';
+                } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
+                    const basic = ['survey_section', 'survey', 'rebound', 'carbonation', 'chloride', 'filling_concrete'];
+                    return basic.includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                }
+            }
+            return 'BASIC';
+        }
+
+        // --- UI 렌더링 엔진 ---
         function render() {
             const state = getActiveFacility();
 
-            // 시설물 목록
-            document.getElementById('facility-list').innerHTML = appData.facilities.map(f => `
-                <div onclick="selectFacility('${f.id}')" class="group flex items-center justify-between p-2 rounded-xl border cursor-pointer ${appData.currentId === f.id ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100'}">
-                    <input type="text" value="${f.name}" onchange="renameFacility('${f.id}', this.value)" onclick="event.stopPropagation()" class="bg-transparent text-[11px] font-bold w-full outline-none">
-                    <button onclick="deleteFacility('${f.id}', event)" class="text-gray-300 hover:text-red-500 ml-2"><i data-lucide="x" class="w-3 h-3"></i></button>
+            // 시설물 목록 렌더링
+            const facilityList = document.getElementById('facility-list');
+            facilityList.innerHTML = appData.facilities.map(f => `
+                <div onclick="selectFacility('${f.id}')" class="group flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${appData.currentId === f.id ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100 hover:border-gray-200'}">
+                    <input type="text" value="${f.name}" onchange="renameFacility('${f.id}', this.value)" onclick="event.stopPropagation()" class="bg-transparent border-none text-[11px] font-bold text-gray-700 focus:ring-0 p-0 w-full outline-none">
+                    <button onclick="deleteFacility('${f.id}', event)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all ml-2">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
                 </div>
             `).join('');
 
-            // 헤더
+            // 헤더 정보 업데이트
             document.getElementById('header-title').innerText = state.name;
-            const typeInfo = STRUCTURE_INFO[state.selectedType];
-            document.getElementById('header-icon-container').className = `w-14 h-14 bg-${typeInfo.color}-600 rounded-2xl flex items-center justify-center text-white shadow-xl`;
-            document.getElementById('header-icon').setAttribute('data-lucide', typeInfo.icon);
-            document.getElementById('header-info').innerHTML = `<span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[10px] font-black">${typeInfo.name} | ${INSPECTION_INFO[state.inspectionType].name}</span>`;
+            const typeName = STRUCTURE_INFO[state.selectedType].name;
+            const inspectionName = INSPECTION_INFO[state.inspectionType].name;
+            const headerInfoHtml = `
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[10px] font-black">${typeName}</span>
+                    <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[10px] font-black">${inspectionName}</span>
+                </div>
+            `;
+            document.getElementById('header-info').innerHTML = headerInfoHtml;
 
-            // 종류 선택 버튼
-            document.getElementById('type-selector').innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
-                <button onclick="updateState({selectedType: '${key}'})" class="flex flex-col items-center p-3 rounded-2xl border-2 ${state.selectedType === key ? `border-${info.color}-600 bg-${info.color}-50 text-${info.color}-600` : 'border-gray-100 bg-white text-gray-400'}">
-                    <i data-lucide="${info.icon}" class="w-5 h-5 mb-1"></i><span class="text-[10px] font-black">${info.name}</span>
+            // 시설물 종류 버튼
+            const typeSelector = document.getElementById('type-selector');
+            typeSelector.innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
+                <button onclick="updateState({selectedType: '${key}'})" class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}">
+                    <i data-lucide="${info.icon}" class="w-5 h-5 mb-1.5"></i>
+                    <span class="text-[10px] font-black">${info.name}</span>
                 </button>
             `).join('');
 
@@ -283,130 +553,103 @@
             document.getElementById('inspection-type').innerHTML = Object.entries(INSPECTION_INFO).map(([k, v]) => `<option value="${k}" ${state.inspectionType === k ? 'selected' : ''}>${v.name}</option>`).join('');
             document.getElementById('facility-class').innerHTML = Object.entries(FACILITY_CLASS_INFO).map(([k, v]) => `<option value="${k}" ${state.facilityClass === k ? 'selected' : ''}>${v}</option>`).join('');
 
-            // 동적 입력 필드 (합계 포함)
+            // 동적 입력 필드
             const dynamicInputs = document.getElementById('dynamic-inputs');
             if (state.selectedType === 'BRIDGE') {
-                const totalL = state.bridgeSpans.reduce((acc, sp) => acc + (sp.spanLength * sp.spanCount), 0);
-                const totalS = state.bridgeSpans.reduce((acc, sp) => acc + sp.spanCount, 0);
+                const spans = state.bridgeSpans || [];
+                const totalL = spans.reduce((acc, sp) => acc + ((parseFloat(sp.spanLength) || 0) * (parseInt(sp.spanCount) || 0)), 0);
+                const totalS = spans.reduce((acc, sp) => acc + (parseInt(sp.spanCount) || 0), 0);
                 dynamicInputs.innerHTML = `
-                    <div class="p-3 bg-indigo-600 rounded-2xl text-white mb-4 shadow-lg">
-                        <div class="flex justify-between items-center"><div class="text-[8px] opacity-70">총 연장</div><div class="text-lg font-black">${totalL}m</div></div>
-                        <div class="flex justify-between items-center mt-1"><div class="text-[8px] opacity-70">총 경간수</div><div class="text-lg font-black">${totalS}경간</div></div>
+                    <div class="p-3 bg-indigo-600 rounded-2xl text-white mb-4 shadow-lg shadow-indigo-100">
+                        <div class="flex justify-between items-center px-1">
+                            <div><p class="text-[8px] font-black opacity-70 uppercase">Total Length</p><p class="text-lg font-black">${totalL.toLocaleString()}m</p></div>
+                            <div class="text-right"><p class="text-[8px] font-black opacity-70 uppercase">Total Spans</p><p class="text-lg font-black">${totalS}경간</p></div>
+                        </div>
                     </div>
-                    <div class="space-y-3">${state.bridgeSpans.map((span, i) => `
-                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
-                            <div class="flex items-center justify-between"><span class="text-[9px] font-black text-indigo-600">경간 그룹 #${i+1}</span><button onclick="removeSection('bridgeSpans', '${span.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
-                            <select onchange="updateSection('bridgeSpans', '${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1 text-[11px] font-bold outline-none">${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="relative"><input type="number" value="${span.spanLength}" onchange="updateSection('bridgeSpans', '${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400">m</span></div>
-                                <div class="relative"><input type="number" value="${span.spanCount}" onchange="updateSection('bridgeSpans', '${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400">경간</span></div>
-                            </div>
-                        </div>`).join('')}<button onclick="addSection('bridgeSpans')" class="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black border border-indigo-100">+ 경간 그룹 추가</button>`;
-            } else if (state.selectedType === 'TUNNEL') {
-                const totalL = state.tunnelSections.reduce((acc, sec) => acc + sec.length, 0);
-                dynamicInputs.innerHTML = `
-                    <div class="p-3 bg-emerald-600 rounded-2xl text-white mb-4 shadow-lg">
-                        <div class="flex justify-between items-center"><div class="text-[8px] opacity-70">총 연장</div><div class="text-lg font-black">${totalL}m</div></div>
-                    </div>
-                    <div class="space-y-3">${state.tunnelSections.map((sec, i) => `
-                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
-                            <div class="flex items-center justify-between"><span class="text-[9px] font-black text-emerald-600">구간 #${i+1}</span><button onclick="removeSection('tunnelSections', '${sec.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
-                            <div class="flex gap-1">
-                                <button onclick="updateSection('tunnelSections', '${sec.id}', 'concreteType', 'REINFORCED')" class="flex-1 py-1 rounded-lg border text-[9px] font-black ${sec.concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400'}">철근</button>
-                                <button onclick="updateSection('tunnelSections', '${sec.id}', 'concreteType', 'PLAIN')" class="flex-1 py-1 rounded-lg border text-[9px] font-black ${sec.concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400'}">무근</button>
-                            </div>
-                            <div class="relative"><input type="number" value="${sec.length}" onchange="updateSection('tunnelSections', '${sec.id}', 'length', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400">m</span></div>
-                        </div>`).join('')}<button onclick="addSection('tunnelSections')" class="w-full py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black border border-emerald-100">+ 구간 추가</button>`;
+                    <div class="space-y-3">${spans.map((span, i) => `
+                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
+                        <div class="flex items-center justify-between"><span class="text-[9px] font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded uppercase">Span Group #${i+1}</span><button onclick="removeSection('bridgeSpans', '${span.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
+                        <select onchange="updateSection('bridgeSpans', '${span.id}', 'type', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none">${BRIDGE_TYPES.map(t => `<option value="${t}" ${span.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+                        <div class="grid grid-cols-2 gap-2"><div class="relative"><input type="number" value="${span.spanLength}" onchange="updateSection('bridgeSpans', '${span.id}', 'spanLength', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span></div><div class="relative"><input type="number" value="${span.spanCount}" onchange="updateSection('bridgeSpans', '${span.id}', 'spanCount', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">경간</span></div></div>
+                    </div>`).join('')}<button onclick="addSection('bridgeSpans')" class="w-full py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black border border-indigo-100 hover:bg-indigo-100 transition-all">+ 경간 그룹 추가</button></div>`;
             } else if (state.selectedType === 'RETAINING_WALL') {
-                const totalL = state.retainingWallSections.reduce((acc, sec) => acc + sec.length, 0);
+                const sections = state.retainingWallSections || [];
+                const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
                 dynamicInputs.innerHTML = `
-                    <div class="p-3 bg-orange-600 rounded-2xl text-white mb-4 shadow-lg">
-                        <div class="flex justify-between items-center"><div class="text-[8px] opacity-70">총 연장</div><div class="text-lg font-black">${totalL}m</div></div>
+                    <div class="p-3 bg-orange-600 rounded-2xl text-white mb-4 shadow-lg shadow-orange-100">
+                        <div class="flex justify-between items-center px-1">
+                            <div><p class="text-[8px] font-black opacity-70 uppercase">Total Length</p><p class="text-lg font-black">${totalL.toLocaleString()}m</p></div>
+                            <div class="text-right"><p class="text-[8px] font-black opacity-70 uppercase">Sections</p><p class="text-lg font-black">${sections.length}개</p></div>
+                        </div>
                     </div>
-                    <div class="space-y-3">${state.retainingWallSections.map((sec, i) => `
-                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
-                            <div class="flex items-center justify-between"><span class="text-[9px] font-black text-orange-600">구간 #${i+1}</span><button onclick="removeSection('retainingWallSections', '${sec.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
-                            <div class="grid grid-cols-3 gap-1">
-                                <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'CONCRETE')" class="py-1 rounded-lg border text-[8px] font-black ${sec.type === 'CONCRETE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400'}">콘크리트</button>
-                                <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'REINFORCED_SOIL')" class="py-1 rounded-lg border text-[8px] font-black ${sec.type === 'REINFORCED_SOIL' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400'}">보강토</button>
-                                <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'STONE')" class="py-1 rounded-lg border text-[8px] font-black ${sec.type === 'STONE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400'}">석축</button>
+                    <div class="space-y-4">
+                        <div class="space-y-3">${sections.map((sec, i) => `
+                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
+                                <div class="flex items-center justify-between"><span class="text-[9px] font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded uppercase">Section #${i+1}</span><button onclick="removeSection('retainingWallSections', '${sec.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'CONCRETE')" class="py-1.5 rounded-lg border text-[9px] font-black transition-all ${sec.type === 'CONCRETE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">콘크리트</button>
+                                    <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'REINFORCED_SOIL')" class="py-1.5 rounded-lg border text-[9px] font-black transition-all ${sec.type === 'REINFORCED_SOIL' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">보강토</button>
+                                    <button onclick="updateSection('retainingWallSections', '${sec.id}', 'type', 'STONE')" class="py-1.5 rounded-lg border text-[9px] font-black transition-all ${sec.type === 'STONE' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-400 border-gray-100'}">석축</button>
+                                </div>
+                                <div class="relative"><input type="number" value="${sec.length}" onchange="updateSection('retainingWallSections', '${sec.id}', 'length', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span></div>
                             </div>
-                            <div class="relative"><input type="number" value="${sec.length}" onchange="updateSection('retainingWallSections', '${sec.id}', 'length', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400">m</span></div>
-                        </div>`).join('')}<button onclick="addSection('retainingWallSections')" class="w-full py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black border border-orange-100">+ 구간 추가</button>`;
+                        `).join('')}</div>
+                        <button onclick="addSection('retainingWallSections')" class="w-full py-2 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black border border-orange-100 hover:bg-orange-100 transition-all">+ 섹션 추가</button>
+                        <div class="pt-2 border-t border-gray-100">
+                            <label class="block text-[9px] font-black text-gray-500 uppercase mb-1">평가단위 (m)</label>
+                            <input type="number" value="${state.evalUnit}" onchange="updateState({evalUnit: parseFloat(this.value)||20})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+                        </div>
+                    </div>`;
+            } else {
+                const sections = state.tunnelSections || [];
+                const totalL = sections.reduce((acc, sec) => acc + (parseFloat(sec.length) || 0), 0);
+                dynamicInputs.innerHTML = `
+                    <div class="p-3 bg-emerald-600 rounded-2xl text-white mb-4 shadow-lg shadow-emerald-100">
+                        <div class="flex justify-between items-center px-1">
+                            <div><p class="text-[8px] font-black opacity-70 uppercase">Total Length</p><p class="text-lg font-black">${totalL.toLocaleString()}m</p></div>
+                            <div class="text-right"><p class="text-[8px] font-black opacity-70 uppercase">Sections</p><p class="text-lg font-black">${sections.length}개</p></div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="space-y-3">${sections.map((sec, i) => `
+                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 relative">
+                                <div class="flex items-center justify-between"><span class="text-[9px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded uppercase">Section #${i+1}</span><button onclick="removeSection('tunnelSections', '${sec.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>
+                                <div class="flex gap-1">
+                                    <button onclick="updateSection('tunnelSections', '${sec.id}', 'concreteType', 'REINFORCED')" class="flex-1 py-1.5 rounded-lg border text-[9px] font-black transition-all ${sec.concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">철근</button>
+                                    <button onclick="updateSection('tunnelSections', '${sec.id}', 'concreteType', 'PLAIN')" class="flex-1 py-1.5 rounded-lg border text-[9px] font-black transition-all ${sec.concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">무근</button>
+                                </div>
+                                <div class="relative"><input type="number" value="${sec.length}" onchange="updateSection('tunnelSections', '${sec.id}', 'length', this.value)" class="w-full bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-[11px] font-bold outline-none"><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-gray-400 font-bold">m</span></div>
+                            </div>
+                        `).join('')}</div>
+                        <button onclick="addSection('tunnelSections')" class="w-full py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black border border-emerald-100 hover:bg-emerald-100 transition-all">+ 섹션 추가</button>
+                    </div>`;
             }
 
+            // 테이블 헤더
             const isBridge = state.selectedType === 'BRIDGE';
             document.getElementById('table-sub-header').innerHTML = isBridge 
-                ? `<th class="p-2 border-r border-gray-200 text-[9px] text-center">상부구조</th><th class="p-2 border-r border-gray-200 text-[9px] text-center">하부구조</th><th class="p-2 border-r border-gray-200 text-[9px] text-center">상부(기준/금회)</th><th class="p-2 border-r border-gray-200 text-[9px] text-center">하부(기준/금회)</th>`
-                : `<th colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-center">산정 기준</th><th colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-center">수량 산출(기준/금회)</th>`;
+                ? `<th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">상부구조</th><th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">하부구조</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">상부 (기준/금회)</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">하부 (기준/금회)</th>`
+                : `<th colspan="2" class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">산정 기준</th><th colspan="2" class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>`;
 
+            // 테이블 바디 (기본/선택 과업 구분)
             const rules = TEST_RULES[state.selectedType] || [];
-            document.getElementById('results-body').innerHTML = rules.map(rule => {
-                const res = rule.calculate(state);
-                const valU = state.implQtys[rule.id]?.upper || res.upperQty;
-                const valL = state.implQtys[rule.id]?.lower || res.lowerQty;
+            const basicRules = rules.filter(r => getCategory(r.id, state) === 'BASIC');
+            const optionalRules = rules.filter(r => getCategory(r.id, state) === 'OPTIONAL');
 
-                return `<tr class="hover:bg-gray-50">
-                    <td class="p-3 border-r border-gray-200 font-bold text-[10px] text-center">${rule.name}</td>
-                    ${isBridge ? `
-                        <td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria}</td>
-                        <td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.lowerCriteria}</td>
-                        <td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1"><span class="text-[10px] text-gray-400">${res.upperQty}</span><span class="text-gray-300">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-10 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600"></div></td>
-                        <td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1"><span class="text-[10px] text-gray-400">${res.lowerQty}</span><span class="text-gray-300">/</span><input type="text" value="${valL}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-10 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600"></div></td>
-                    ` : `
-                        <td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center">${res.upperCriteria}</td>
-                        <td colspan="2" class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1"><span class="text-[10px] text-gray-400">${res.upperQty}</span><span class="text-gray-300">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-10 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600"></div></td>
-                    `}
-                    <td class="p-2 text-[9px] text-gray-400 text-center italic">지침 준수</td>
-                </tr>`;
-            }).join('');
-            lucide.createIcons();
-        }
+            const renderRows = (rulesList, title, icon) => {
+                if (rulesList.length === 0) return '';
+                const header = `<tr class="bg-gray-50/80"><td colspan="${isBridge ? 6 : 4}" class="p-2.5 px-4 text-[10px] font-black text-gray-500 flex items-center gap-2"><i data-lucide="${icon}" class="w-3 h-3"></i> ${title}</td></tr>`;
+                const rows = rulesList.map(rule => {
+                    const res = rule.calculate(state);
+                    const valU = (state.implQtys[rule.id] && state.implQtys[rule.id].upper !== undefined) ? state.implQtys[rule.id].upper : res.upperQty;
+                    const valL = (state.implQtys[rule.id] && state.implQtys[rule.id].lower !== undefined) ? state.implQtys[rule.id].lower : res.lowerQty;
 
-        function addSection(arrayName) {
-            const state = getActiveFacility();
-            const newId = Date.now().toString();
-            let newObj = { id: newId, length: 100 };
-            if (arrayName === 'bridgeSpans') newObj = { id: newId, type: 'STB (강박스)', spanLength: 30, spanCount: 1 };
-            else if (arrayName === 'tunnelSections') newObj = { id: newId, length: 100, concreteType: 'REINFORCED' };
-            else if (arrayName === 'retainingWallSections') newObj = { id: newId, length: 100, type: 'CONCRETE' };
-            updateState({ [arrayName]: [...state[arrayName], newObj] });
-        }
-        function removeSection(arrayName, id) {
-            const state = getActiveFacility();
-            if (state[arrayName].length > 1) updateState({ [arrayName]: state[arrayName].filter(s => s.id !== id) });
-        }
-        function updateSection(arrayName, id, field, value) {
-            const state = getActiveFacility();
-            const updated = state[arrayName].map(s => s.id === id ? { ...s, [field]: (field === 'type' || field === 'concreteType') ? value : parseFloat(value) || 0 } : s);
-            updateState({ [arrayName]: updated });
-        }
-        function updateImplQty(ruleId, part, value) {
-            const state = getActiveFacility();
-            if (!state.implQtys[ruleId]) state.implQtys[ruleId] = {};
-            state.implQtys[ruleId][part] = value;
-            saveToLocal();
-        }
-        function addFacility() {
-            const newId = Date.now().toString();
-            appData.facilities.push({ ...appData.facilities[0], id: newId, name: `신규 시설물 ${appData.facilities.length + 1}`, implQtys: {} });
-            appData.currentId = newId;
-            saveToLocal();
-            render();
-        }
-        function deleteFacility(id, event) {
-            event.stopPropagation();
-            if (appData.facilities.length <= 1) return alert('최소 하나는 필요합니다.');
-            appData.facilities = appData.facilities.filter(f => f.id !== id);
-            if (appData.currentId === id) appData.currentId = appData.facilities[0].id;
-            saveToLocal();
-            render();
-        }
-        function selectFacility(id) { appData.currentId = id; render(); }
-        function renameFacility(id, name) { const f = appData.facilities.find(f => f.id === id); if (f) f.name = name; saveToLocal(); }
-        function resetData() { if (confirm('초기화하시겠습니까?')) { localStorage.removeItem('safety_diag_final_v5'); location.reload(); } }
+                    return `<tr class="hover:bg-gray-50 transition-colors"><td class="p-3 border-r border-gray-200 font-bold text-gray-900 text-[10px] text-center">${rule.name}</td>
+                        ${isBridge ? `<td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.upperCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.lowerCriteria || '-'}</td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td><td class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.lowerQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valL}" onchange="updateImplQty('${rule.id}', 'lower', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`
+                        : `<td colspan="2" class="p-2 border-r border-gray-200 text-[9px] text-gray-500 text-center whitespace-pre-line">${res.upperCriteria || '-'}</td><td colspan="2" class="p-2 border-r border-gray-200 text-center"><div class="flex items-center justify-center gap-1.5"><span class="text-gray-900 font-normal text-[11px]">${res.upperQty}</span><span class="text-gray-300 text-[10px]">/</span><input type="text" value="${valU}" onchange="updateImplQty('${rule.id}', 'upper', this.value)" class="w-12 bg-blue-50 border border-blue-100 rounded text-center text-[10px] font-bold text-blue-600 outline-none"></div></td>`}
+                        <td class="p-2 text-[9px] text-gray-400 text-center italic">지침 기준 준수</td></tr>`;
+                }).join('');
+                return header + rows;
+            };
 
-        render();
-    </script>
-</body>
-</html>
+            document.getElementById('results-body').innerHTML = renderRows(
