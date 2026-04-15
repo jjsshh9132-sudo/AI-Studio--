@@ -529,13 +529,6 @@
         }
 
         // --- UI 렌더링 엔진 ---
-        function updateState(updates) {
-            const facility = getActiveFacility();
-            Object.assign(facility, updates);
-            saveToLocal();
-            render();
-        }
-
         function render() {
             const state = getActiveFacility();
 
