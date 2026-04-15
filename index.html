@@ -29,6 +29,15 @@
                 <p class="text-[9px] text-gray-500 font-bold">제원 및 점검 종류를 선택하세요</p>
             </div>
 
+            <!-- 시설물 목록 섹션 -->
+            <div class="p-5 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">시설물 목록</label>
+                    <button onclick="addFacility()" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800">+ 추가</button>
+                </div>
+                <div id="facility-list" class="space-y-2 max-h-48 overflow-y-auto no-scrollbar"></div>
+            </div>
+
             <div class="p-5 space-y-6">
                 <section>
                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">01. 시설물 종류</label>
@@ -115,17 +124,81 @@
         const BRIDGE_TYPES = ['STB (강박스)', 'SPG (강플레이트)', 'PSCI (PSC I형)', 'SLAB (RC슬래브)', 'RA (라멘)', '트러스교', '아치교', '현수교', '사장교', '기타'];
 
         // --- 상태 관리 ---
-        let state = {
-            selectedType: 'BRIDGE',
-            inspectionType: 'DETAILED_DIAGNOSIS',
-            facilityClass: 'CLASS_1',
-            bridgeSpans: [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }],
-            tunnelSections: [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }],
-            retainingWallTotalLength: 100,
-            retainingWallType: 'CONCRETE',
-            evalUnit: 20,
-            implQtys: {}
+        let appData = JSON.parse(localStorage.getItem('safety_diag_data')) || {
+            facilities: [{
+                id: '1',
+                name: '기본 시설물 1',
+                selectedType: 'BRIDGE',
+                inspectionType: 'DETAILED_DIAGNOSIS',
+                facilityClass: 'CLASS_1',
+                bridgeSpans: [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }],
+                tunnelSections: [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }],
+                retainingWallTotalLength: 100,
+                retainingWallType: 'CONCRETE',
+                evalUnit: 20,
+                implQtys: {}
+            }],
+            currentId: '1'
         };
+
+        function getActiveFacility() {
+            return appData.facilities.find(f => f.id === appData.currentId) || appData.facilities[0];
+        }
+
+        function saveToLocal() {
+            localStorage.setItem('safety_diag_data', JSON.stringify(appData));
+        }
+
+        function updateState(updates) {
+            const facility = getActiveFacility();
+            Object.assign(facility, updates);
+            saveToLocal();
+            render();
+        }
+
+        function addFacility() {
+            const newId = Date.now().toString();
+            appData.facilities.push({
+                id: newId,
+                name: `신규 시설물 ${appData.facilities.length + 1}`,
+                selectedType: 'BRIDGE',
+                inspectionType: 'DETAILED_DIAGNOSIS',
+                facilityClass: 'CLASS_1',
+                bridgeSpans: [{ id: '1', type: 'STB (강박스)', spanLength: 30, spanCount: 3, girderCount: 5 }],
+                tunnelSections: [{ id: '1', type: '표준단면', length: 500, concreteType: 'REINFORCED' }],
+                retainingWallTotalLength: 100,
+                retainingWallType: 'CONCRETE',
+                evalUnit: 20,
+                implQtys: {}
+            });
+            appData.currentId = newId;
+            saveToLocal();
+            render();
+        }
+
+        function deleteFacility(id, event) {
+            event.stopPropagation();
+            if (appData.facilities.length <= 1) return alert('최소 하나의 시설물은 있어야 합니다.');
+            if (!confirm('이 시설물을 삭제하시겠습니까?')) return;
+            appData.facilities = appData.facilities.filter(f => f.id !== id);
+            if (appData.currentId === id) appData.currentId = appData.facilities[0].id;
+            saveToLocal();
+            render();
+        }
+
+        function selectFacility(id) {
+            appData.currentId = id;
+            saveToLocal();
+            render();
+        }
+
+        function renameFacility(id, newName) {
+            const facility = appData.facilities.find(f => f.id === id);
+            if (facility) {
+                facility.name = newName;
+                saveToLocal();
+            }
+        }
 
         // --- 계산 유틸리티 ---
         const calcByLength = (l, d) => Math.max(1, Math.ceil(l / d));
@@ -457,11 +530,27 @@
 
         // --- UI 렌더링 엔진 ---
         function updateState(updates) {
-            state = { ...state, ...updates };
+            const facility = getActiveFacility();
+            Object.assign(facility, updates);
+            saveToLocal();
             render();
         }
 
         function render() {
+            const state = getActiveFacility();
+
+            // 시설물 목록 렌더링
+            const facilityList = document.getElementById('facility-list');
+            facilityList.innerHTML = appData.facilities.map(f => `
+                <div onclick="selectFacility('${f.id}')" class="group flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${appData.currentId === f.id ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100 hover:border-gray-200'}">
+                    <input type="text" value="${f.name}" onchange="renameFacility('${f.id}', this.value)" onclick="event.stopPropagation()" class="bg-transparent border-none text-[11px] font-bold text-gray-700 focus:ring-0 p-0 w-full outline-none">
+                    <button onclick="deleteFacility('${f.id}', event)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all ml-2">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // 시설물 종류 버튼
             const typeSelector = document.getElementById('type-selector');
             typeSelector.innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
                 <button onclick="updateState({selectedType: '${key}'})" class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}">
@@ -470,9 +559,11 @@
                 </button>
             `).join('');
 
+            // 셀렉트 박스
             document.getElementById('inspection-type').innerHTML = Object.entries(INSPECTION_INFO).map(([k, v]) => `<option value="${k}" ${state.inspectionType === k ? 'selected' : ''}>${v.name}</option>`).join('');
             document.getElementById('facility-class').innerHTML = Object.entries(FACILITY_CLASS_INFO).map(([k, v]) => `<option value="${k}" ${state.facilityClass === k ? 'selected' : ''}>${v}</option>`).join('');
 
+            // 동적 입력 필드
             const dynamicInputs = document.getElementById('dynamic-inputs');
             if (state.selectedType === 'BRIDGE') {
                 dynamicInputs.innerHTML = `<div class="space-y-3">${state.bridgeSpans.map((span, i) => `
@@ -487,11 +578,13 @@
                 dynamicInputs.innerHTML = `<div class="space-y-4"><div><label class="block text-[9px] font-black text-gray-500 uppercase mb-1">터널 총 연장 (m)</label><input type="number" value="${state.tunnelSections[0].length}" onchange="const s=[...state.tunnelSections];s[0].length=parseFloat(this.value)||0;updateState({tunnelSections: s})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"></div><div class="flex gap-1"><button onclick="const s=[...state.tunnelSections];s[0].concreteType='REINFORCED';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">철근</button><button onclick="const s=[...state.tunnelSections];s[0].concreteType='PLAIN';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">무근</button></div></div>`;
             }
 
+            // 테이블 헤더
             const isBridge = state.selectedType === 'BRIDGE';
             document.getElementById('table-sub-header').innerHTML = isBridge 
                 ? `<th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">상부구조</th><th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">하부구조</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">상부 (기준/금회)</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">하부 (기준/금회)</th>`
                 : `<th colspan="2" class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">산정 기준</th><th colspan="2" class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>`;
 
+            // 테이블 바디 (기본/선택 과업 구분)
             const rules = TEST_RULES[state.selectedType];
             const basicRules = rules.filter(r => getCategory(r.id, state) === 'BASIC');
             const optionalRules = rules.filter(r => getCategory(r.id, state) === 'OPTIONAL');
@@ -516,12 +609,23 @@
             lucide.createIcons();
         }
 
-        function addSpan() { updateState({ bridgeSpans: [...state.bridgeSpans, { id: Math.random().toString(36).substr(2, 9), type: 'STB (강박스)', spanLength: 30, spanCount: 1, girderCount: 5 }] }); }
-        function removeSpan(id) { if (state.bridgeSpans.length > 1) updateState({ bridgeSpans: state.bridgeSpans.filter(s => s.id !== id) }); }
-        function updateSpan(id, field, value) { updateState({ bridgeSpans: state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s) }); }
+        function addSpan() { 
+            const state = getActiveFacility();
+            updateState({ bridgeSpans: [...state.bridgeSpans, { id: Math.random().toString(36).substr(2, 9), type: 'STB (강박스)', spanLength: 30, spanCount: 1, girderCount: 5 }] }); 
+        }
+        function removeSpan(id) { 
+            const state = getActiveFacility();
+            if (state.bridgeSpans.length > 1) updateState({ bridgeSpans: state.bridgeSpans.filter(s => s.id !== id) }); 
+        }
+        function updateSpan(id, field, value) { 
+            const state = getActiveFacility();
+            updateState({ bridgeSpans: state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s) }); 
+        }
         function updateImplQty(ruleId, part, value) { 
+            const state = getActiveFacility();
             if (!state.implQtys[ruleId]) state.implQtys[ruleId] = {}; 
             state.implQtys[ruleId][part] = value; 
+            saveToLocal();
         }
 
         render();
