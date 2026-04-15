@@ -139,7 +139,7 @@
         };
         const isSteel = (t) => t.includes('강') || t.includes('STB') || t.includes('SPG') || t.includes('트러스');
 
-        // --- 모든 시험 항목 규칙 (세부지침 기준 포함) ---
+        // --- 모든 시험 항목 규칙 ---
         const TEST_RULES = {
             BRIDGE: [
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
@@ -167,12 +167,31 @@
                     return { upperQty: qty, lowerQty: lQty, upperCriteria: isD ? 'RC: 2개소/50m, 강재: 1개소/50m' : '1개소/50m', lowerCriteria: '1개소/연장 50m' };
                 }},
                 { id: 'carbonation', name: '탄산화깊이 측정', calculate: (s) => {
-                    const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION' || s.inspectionType === 'PERFORMANCE_EVAL_2';
+                    const isDD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
                     const totalSpans = s.bridgeSpans.reduce((acc, sp) => acc + sp.spanCount, 0);
-                    const isSmall = totalSpans <= 5;
-                    const uQty = isD ? (isSmall ? 2 : 3) : (isSmall ? 1 : 2);
-                    const lQty = isD ? (isSmall ? 4 : 6) : (isSmall ? 2 : 4);
-                    return { upperQty: uQty, lowerQty: lQty, upperCriteria: isD ? '5경간 이내: 2개소, 5경간 이상: 3개소' : '5경간 이내: 1개소, 5경간 이상: 2개소', lowerCriteria: isD ? '5경간 이내: 4개소, 5경간 이상: 6개소' : '5경간 이내: 2개소, 5경간 이상: 4개소' };
+                    const isSmall = totalSpans < 5; // 5경간 미만
+                    
+                    if (isDI) {
+                        const uQty = isSmall ? 1 : 2;
+                        const lQty = isSmall ? 2 : 4;
+                        return { 
+                            upperQty: uQty, 
+                            lowerQty: lQty, 
+                            upperCriteria: isSmall ? '5경간 이내: 2~3개소' : '5경간 이상: 3~6개소', 
+                            lowerCriteria: '상부구조 수량 준용' 
+                        };
+                    } else if (isDD) {
+                        const uQty = isSmall ? 2 : 3;
+                        const lQty = isSmall ? 4 : 6;
+                        return { 
+                            upperQty: uQty, 
+                            lowerQty: lQty, 
+                            upperCriteria: isSmall ? '5경간 이내: 4~6개소' : '5경간 이상: 6~12개소', 
+                            lowerCriteria: '상부구조 수량 준용' 
+                        };
+                    }
+                    return { upperQty: '-', lowerQty: '-', upperCriteria: '-', lowerCriteria: '-' };
                 }},
                 { id: 'chloride', name: '염화물 함유량', calculate: () => ({ upperQty: 1, lowerQty: 2, upperCriteria: '상부구조 1개소 이상', lowerCriteria: '하부구조 2개소 이상' })},
                 { id: 'crack_depth', name: '균열깊이 조사', calculate: () => ({ upperQty: '판단', lowerQty: '판단', upperCriteria: '부재의 중요도를 고려하여 결정', lowerCriteria: '책임기술자의 판단에 따라 수량 결정' })},
@@ -262,8 +281,8 @@
                     const isDI = s.inspectionType === 'DETAILED_INSPECTION';
                     const isPE2 = s.inspectionType === 'PERFORMANCE_EVAL_2';
                     if (isDI) {
-                        const qty = reinforcedL < 1000 ? 2 : 2 + Math.ceil((reinforcedL - 1000) / 500);
-                        return { upperQty: qty, lowerQty: '-', upperCriteria: '1,000m 미만: 2개소\n1,000m 이상: 2개소 + 500m당 1개소 추가' };
+                        const qty = reinforcedL < 1000 ? 2 : 2 + Math.ceil((reinforcedL - 1000) / 1000);
+                        return { upperQty: qty, lowerQty: '-', upperCriteria: '1,000m 미만: 2개소\n1,000m 이상: 최소 2개소 + 1,000m당 1개소 추가' };
                     }
                     if (isPE2) {
                         const qty = reinforcedL < 1000 ? 2 : 2 + Math.ceil((reinforcedL - 1000) / 1000);
@@ -289,9 +308,10 @@
                 { id: 'survey', name: '측량', calculate: () => ({ upperQty: '실시', lowerQty: '-', upperCriteria: '옹벽의 선형측량 및 수준측량' })},
                 { id: 'rebound', name: '반발경도시험', calculate: (s) => {
                     if (s.retainingWallType === 'STONE') return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
                     const isPE2 = s.inspectionType === 'PERFORMANCE_EVAL_2';
                     const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
-                    if (isPE2) {
+                    if (isDI || isPE2) {
                         const qty = Math.ceil(s.retainingWallTotalLength / 50);
                         return { upperQty: qty, lowerQty: '-', upperCriteria: '총수량 = (총 연장 ÷ 50m)개소' };
                     }
@@ -316,15 +336,17 @@
                 }},
                 { id: 'carbonation', name: '탄산화 깊이', calculate: (s) => {
                     if (s.retainingWallType === 'STONE') return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
                     const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
-                    const divisor = isD ? 50 : 100;
+                    const divisor = (isDI || !isD) ? 100 : 50;
                     const qty = s.retainingWallTotalLength < 100 ? 2 : 2 + Math.ceil((s.retainingWallTotalLength - 100) / divisor);
                     return { upperQty: qty, lowerQty: '-', upperCriteria: `100m 미만: 2개소\n100m 이상: 최소 2개소 + ${divisor}m당 1개소 추가` };
                 }},
                 { id: 'chloride', name: '염화물 함유량', calculate: (s) => {
                     if (s.retainingWallType === 'STONE') return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
                     const isD = s.inspectionType === 'DETAILED_DIAGNOSIS' || s.inspectionType === 'PERFORMANCE_EVAL_1';
-                    const divisor = isD ? 50 : 100;
+                    const divisor = (isDI || !isD) ? 100 : 50;
                     const qty = s.retainingWallTotalLength < 100 ? 2 : 2 + Math.ceil((s.retainingWallTotalLength - 100) / divisor);
                     return { upperQty: qty, lowerQty: '-', upperCriteria: `100m 미만: 2개소\n100m 이상: 최소 2개소 + ${divisor}m당 1개소 추가` };
                 }},
@@ -345,8 +367,9 @@
                 }},
                 { id: 'rebar_scan', name: '철근탐사', calculate: (s) => {
                     if (s.retainingWallType !== 'CONCRETE') return { upperQty: '-', lowerQty: '-', upperCriteria: '해당없음' };
+                    const isDI = s.inspectionType === 'DETAILED_INSPECTION';
                     const isPE2 = s.inspectionType === 'PERFORMANCE_EVAL_2';
-                    if (isPE2) {
+                    if (isDI || isPE2) {
                         const qty = Math.ceil(s.retainingWallTotalLength / 50);
                         return { upperQty: qty, lowerQty: '-', upperCriteria: '총수량 = (총 연장 ÷ 50m)개소' };
                     }
@@ -388,15 +411,27 @@
             
             if (s.selectedType === 'BRIDGE') {
                 if (s.inspectionType === 'DETAILED_INSPECTION') {
-                    return ['rebound', 'carbonation'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                    const basic = ['rebound', 'carbonation'];
+                    const optional = ['core_sampling', 'rebar_scan', 'chloride', 'magnetic_particle', 'steel_ut', 'clearance_survey'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    if (optional.includes(ruleId)) return 'OPTIONAL';
+                    return null;
                 } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
-                    return ['rebound', 'rebar_scan', 'carbonation', 'chloride', 'coating_thickness'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                    const basic = ['rebound', 'rebar_scan', 'carbonation', 'chloride', 'coating_thickness'];
+                    const optional = ['core_sampling', 'ultrasonic', 'magnetic_particle', 'steel_ut', 'clearance_survey'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    if (optional.includes(ruleId)) return 'OPTIONAL';
+                    return null;
                 } else if (isDetailed) {
                     return ['rebound', 'ultrasonic', 'rebar_scan', 'carbonation', 'chloride', 'crack_depth', 'steel_ut', 'coating_thickness'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
                 }
             } else if (s.selectedType === 'TUNNEL') {
                 if (s.inspectionType === 'DETAILED_INSPECTION') {
-                    return ['survey_section', 'rebound', 'carbonation'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
+                    const basic = ['survey_section', 'rebound', 'carbonation'];
+                    const optional = ['core_sampling', 'chloride'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    if (optional.includes(ruleId)) return 'OPTIONAL';
+                    return null;
                 } else if (s.inspectionType === 'PERFORMANCE_EVAL_1') {
                     return ['survey_section', 'cross_section', 'rebound', 'ultrasonic', 'rebar_scan', 'rebar_corrosion', 'crack_depth', 'carbonation', 'chloride', 'luminance', 'illuminance'].includes(ruleId) ? 'BASIC' : 'OPTIONAL';
                 } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
@@ -406,7 +441,11 @@
                 }
             } else if (s.selectedType === 'RETAINING_WALL') {
                 if (s.inspectionType === 'DETAILED_INSPECTION') {
-                    return ['chloride', 'rebar_scan', 'deformation_survey'].includes(ruleId) ? 'OPTIONAL' : 'BASIC';
+                    const basic = ['survey_section', 'survey', 'rebound', 'carbonation', 'rock_weathering', 'filling_concrete'];
+                    const optional = ['core_sampling', 'chloride', 'rebar_scan', 'ground_survey', 'groundwater', 'deformation_survey', 'inclinometer', 'earth_pressure'];
+                    if (basic.includes(ruleId)) return 'BASIC';
+                    if (optional.includes(ruleId)) return 'OPTIONAL';
+                    return null;
                 } else if (s.inspectionType === 'PERFORMANCE_EVAL_1' || s.inspectionType === 'DETAILED_DIAGNOSIS') {
                     return ['crack_depth', 'deformation_survey', 'core_sampling', 'groundwater', 'inclinometer', 'earth_pressure', 'coating_thickness'].includes(ruleId) ? 'OPTIONAL' : 'BASIC';
                 } else if (s.inspectionType === 'PERFORMANCE_EVAL_2') {
@@ -423,7 +462,6 @@
         }
 
         function render() {
-            // 시설물 종류 버튼
             const typeSelector = document.getElementById('type-selector');
             typeSelector.innerHTML = Object.entries(STRUCTURE_INFO).map(([key, info]) => `
                 <button onclick="updateState({selectedType: '${key}'})" class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${state.selectedType === key ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-lg shadow-indigo-100' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}">
@@ -432,11 +470,9 @@
                 </button>
             `).join('');
 
-            // 셀렉트 박스
             document.getElementById('inspection-type').innerHTML = Object.entries(INSPECTION_INFO).map(([k, v]) => `<option value="${k}" ${state.inspectionType === k ? 'selected' : ''}>${v.name}</option>`).join('');
             document.getElementById('facility-class').innerHTML = Object.entries(FACILITY_CLASS_INFO).map(([k, v]) => `<option value="${k}" ${state.facilityClass === k ? 'selected' : ''}>${v}</option>`).join('');
 
-            // 동적 입력 필드 (onchange 사용으로 포커스 유지)
             const dynamicInputs = document.getElementById('dynamic-inputs');
             if (state.selectedType === 'BRIDGE') {
                 dynamicInputs.innerHTML = `<div class="space-y-3">${state.bridgeSpans.map((span, i) => `
@@ -451,13 +487,11 @@
                 dynamicInputs.innerHTML = `<div class="space-y-4"><div><label class="block text-[9px] font-black text-gray-500 uppercase mb-1">터널 총 연장 (m)</label><input type="number" value="${state.tunnelSections[0].length}" onchange="const s=[...state.tunnelSections];s[0].length=parseFloat(this.value)||0;updateState({tunnelSections: s})" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none"></div><div class="flex gap-1"><button onclick="const s=[...state.tunnelSections];s[0].concreteType='REINFORCED';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'REINFORCED' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">철근</button><button onclick="const s=[...state.tunnelSections];s[0].concreteType='PLAIN';updateState({tunnelSections: s})" class="flex-1 py-2 rounded-xl border text-[10px] font-black transition-all ${state.tunnelSections[0].concreteType === 'PLAIN' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-100'}">무근</button></div></div>`;
             }
 
-            // 테이블 헤더
             const isBridge = state.selectedType === 'BRIDGE';
             document.getElementById('table-sub-header').innerHTML = isBridge 
                 ? `<th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">상부구조</th><th class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">하부구조</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">상부 (기준/금회)</th><th class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">하부 (기준/금회)</th>`
                 : `<th colspan="2" class="p-2 border-r border-gray-200 font-bold text-gray-500 text-[10px] text-center">산정 기준</th><th colspan="2" class="p-2 border-r border-gray-200 font-bold text-indigo-600 text-[10px] text-center">수량 산출 (기준 / 금회)</th>`;
 
-            // 테이블 바디 (기본/선택 과업 구분)
             const rules = TEST_RULES[state.selectedType];
             const basicRules = rules.filter(r => getCategory(r.id, state) === 'BASIC');
             const optionalRules = rules.filter(r => getCategory(r.id, state) === 'OPTIONAL');
@@ -467,7 +501,6 @@
                 const header = `<tr class="bg-gray-50/80"><td colspan="${isBridge ? 6 : 4}" class="p-2.5 px-4 text-[10px] font-black text-gray-500 flex items-center gap-2"><i data-lucide="${icon}" class="w-3 h-3"></i> ${title}</td></tr>`;
                 const rows = rulesList.map(rule => {
                     const res = rule.calculate(state);
-                    // 수동 수정값이 있으면 사용, 없으면 계산된 기준값 사용
                     const valU = (state.implQtys[rule.id] && state.implQtys[rule.id].upper !== undefined) ? state.implQtys[rule.id].upper : res.upperQty;
                     const valL = (state.implQtys[rule.id] && state.implQtys[rule.id].lower !== undefined) ? state.implQtys[rule.id].lower : res.lowerQty;
 
@@ -486,12 +519,9 @@
         function addSpan() { updateState({ bridgeSpans: [...state.bridgeSpans, { id: Math.random().toString(36).substr(2, 9), type: 'STB (강박스)', spanLength: 30, spanCount: 1, girderCount: 5 }] }); }
         function removeSpan(id) { if (state.bridgeSpans.length > 1) updateState({ bridgeSpans: state.bridgeSpans.filter(s => s.id !== id) }); }
         function updateSpan(id, field, value) { updateState({ bridgeSpans: state.bridgeSpans.map(s => s.id === id ? { ...s, [field]: field === 'type' ? value : parseFloat(value) || 0 } : s) }); }
-        
         function updateImplQty(ruleId, part, value) { 
             if (!state.implQtys[ruleId]) state.implQtys[ruleId] = {}; 
             state.implQtys[ruleId][part] = value; 
-            // 수량 수정 시 즉시 반영을 위해 render 호출 (onchange에서만 호출됨)
-            render();
         }
 
         render();
